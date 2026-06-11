@@ -41,24 +41,24 @@ PRESETS = {
     "claude": {
         "slug": "claude-opus-4-8", "env_prefix": "CLAUDE",
         "model_name": "openai/claude-opus-4-8", "parse": "function_calling",
-        "cost": 0.0, "max_input_tokens": 32000,
+        "cost": 0.0, "max_input_tokens": 110000,
     },
     "deepseek": {
         "slug": "deepseek-chat", "env_prefix": "DEEPSEEK",
         "model_name": "openai/deepseek-chat", "parse": "function_calling",
-        "cost": 0.0, "max_input_tokens": 32000,
+        "cost": 0.0, "max_input_tokens": 110000,
     },
     "glm": {
         "slug": "glm-5.1", "env_prefix": "GLM",
         "model_name": "openai/glm-5.1", "parse": "thought_action",
-        "cost": 0.0, "max_input_tokens": 32000,
+        "cost": 0.0, "max_input_tokens": 110000,
     },
     "pangu": {
         "slug": "pangu", "env_prefix": "PANGU",
         # pangu35b verified to return native tool_calls via the gateway, and the
         # registry marks it function-calling capable -> use the native loop.
         "model_name": "openai/pangu_auto", "parse": "function_calling",
-        "cost": 0.0, "max_input_tokens": 32000,
+        "cost": 0.0, "max_input_tokens": 110000,
     },
 }
 
@@ -134,7 +134,7 @@ def ensure_registry(a) -> str:
     if a.model_name not in reg:
         reg[a.model_name] = {
             "max_input_tokens": a.max_input_tokens or 131072,
-            "max_output_tokens": 8192,
+            "max_output_tokens": a.max_output_tokens or 20000,
             "input_cost_per_token": 0, "output_cost_per_token": 0,
             "litellm_provider": "openai", "mode": "chat",
             "supports_function_calling": True, "supports_tool_choice": True,
@@ -225,13 +225,18 @@ def build_cmd(a) -> list[str]:
         cmd += ["--agent.model.temperature", str(a.temperature)]
     if a.top_p is not None:
         cmd += ["--agent.model.top_p", str(a.top_p)]
-    if a.max_output_tokens:
-        cmd += ["--agent.model.max_output_tokens", str(a.max_output_tokens)]
     if a.stream and "--agent.model.stream" not in bad:
         cmd += ["--agent.model.stream", "true"]
+    # Request-body kwargs (spread into litellm.completion). The per-request output
+    # cap MUST be max_tokens here: SWE-agent only maps max_output_tokens->max_tokens
+    # for anthropic providers, so for an openai-compatible gateway it'd be ignored.
+    ck = {}
     if a.extra_body:
-        cmd += ["--agent.model.completion_kwargs",
-                json.dumps({"extra_body": a.extra_body})]
+        ck["extra_body"] = a.extra_body
+    if a.max_output_tokens:
+        ck["max_tokens"] = a.max_output_tokens
+    if ck:
+        cmd += ["--agent.model.completion_kwargs", json.dumps(ck)]
     cmd += a.extra
     return cmd
 
@@ -255,7 +260,8 @@ def resolve_sampling(a) -> None:
     # CLI overrides win over the profile.
     a.temperature = a.temperature if a.temperature is not None else prof.get("temperature")
     a.top_p = a.top_p if a.top_p is not None else prof.get("top_p")
-    a.max_output_tokens = prof.get("max_output_tokens")
+    # Per-request output cap: CLI > sampling profile > 20000 default.
+    a.max_output_tokens = a.max_output_tokens or prof.get("max_output_tokens") or 20000
     a.stream = a.stream or bool(prof.get("stream"))
     if a.top_k is not None:
         extra["top_k"] = a.top_k
@@ -277,7 +283,12 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--api-base")
     ap.add_argument("--api-key", help="explicit key (else read key_env from env)")
-    ap.add_argument("--max-input-tokens", type=int, default=0)
+    ap.add_argument("--max-input-tokens", type=int, default=0,
+                    help="context budget: SWE-agent guardrail on the accumulating "
+                    "conversation (default 110000 via preset). Not an API param.")
+    ap.add_argument("--max-output-tokens", type=int, default=0,
+                    help="per-request output cap (default 20000). Sent to the gateway "
+                    "as max_tokens via completion_kwargs (works for openai-compatible).")
     ap.add_argument("--per-instance-call-limit", type=int, default=0)
     ap.add_argument("--instances", help="custom instances yaml (e.g. smoke subset)")
     ap.add_argument("--image", help="override env.deployment.image for all instances "
