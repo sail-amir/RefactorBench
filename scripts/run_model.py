@@ -55,7 +55,9 @@ PRESETS = {
     },
     "pangu": {
         "slug": "pangu", "env_prefix": "PANGU",
-        "model_name": "openai/pangu_auto", "parse": "thought_action",
+        # pangu35b verified to return native tool_calls via the gateway, and the
+        # registry marks it function-calling capable -> use the native loop.
+        "model_name": "openai/pangu_auto", "parse": "function_calling",
         "cost": 0.0, "max_input_tokens": 32000,
     },
 }
