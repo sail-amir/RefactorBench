@@ -1,0 +1,9 @@
+.swe-venv/
+.swe-agent-src/
+runs/
+.rb_cache/
+scripts/__pycache__/
+scripts/models.env
+scripts/smoke_instances.yaml
+swe_install.log
+swerex_build*.log

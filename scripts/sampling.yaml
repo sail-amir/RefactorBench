@@ -1,0 +1,40 @@
+# Per-model sampling profiles, applied by scripts/run_model.py.
+#
+# Keys are preset names (claude/deepseek/glm/pangu) plus an optional `default`
+# that every model inherits (model values override default; `extra_body` dicts
+# are merged).
+#
+# How params are sent:
+#   - temperature, top_p, max_output_tokens  -> native SWE-agent flags
+#     (--agent.model.temperature / .top_p / .max_output_tokens)
+#   - top_k, min_p, repetition_penalty, frequency_penalty, presence_penalty,
+#     and anything under `extra_body:` -> forwarded verbatim to the gateway via
+#     litellm extra_body (use this for non-OpenAI-standard params like top_k).
+#   - reasoning_effort is added to extra_body by the --reasoning-effort flag.
+#
+# CLI flags (--temperature / --top-p / --top-k) override these per run.
+
+default:
+  temperature: 0.0      # SWE-agent / paper-faithful default (greedy-ish)
+  top_p: 1.0
+  stream: true          # gateway prefers streaming (reassembled transparently)
+
+claude:
+  temperature: 1.0
+  top_p: 1.0
+
+deepseek:
+  temperature: 0.6      # DeepSeek's recommended general temperature
+  top_p: 0.95
+  # extra_body:
+  #   top_k: 20
+
+glm:
+  temperature: 0.6
+  top_p: 0.95
+
+pangu:
+  temperature: 1.0      # from your .pangu.env (PANGU_TEMPERATURE/TOP_P/TOP_K)
+  top_p: 0.8
+  extra_body:
+    top_k: -1

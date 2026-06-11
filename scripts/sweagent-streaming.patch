@@ -1,0 +1,60 @@
+diff --git a/sweagent/agent/models.py b/sweagent/agent/models.py
+index 496b226..4965846 100644
+--- a/sweagent/agent/models.py
++++ b/sweagent/agent/models.py
+@@ -95,6 +95,10 @@ class GenericAPIModelConfig(PydanticBaseModel):
+     completion_kwargs: dict[str, Any] = {}
+     """Additional kwargs to pass to `litellm.completion`"""
+ 
++    stream: bool = False
++    """Stream the completion and reassemble it into a normal response (for
++    gateways/proxies that require or prefer streaming). Transparent to the agent."""
++
+     convert_system_to_user: bool = False
+     """Whether to convert system messages to user messages. This is useful for
+     models that do not support system messages like o1.
+@@ -718,19 +722,32 @@ class LiteLLMModel(AbstractModel):
+         if "User-Agent" not in completion_kwargs["extra_headers"]:
+             completion_kwargs["extra_headers"]["User-Agent"] = f"swe-agent/{__version__}"
+ 
++        _call_kwargs = dict(
++            model=self.config.name,
++            messages=messages,
++            temperature=self.config.temperature if temperature is None else temperature,
++            top_p=self.config.top_p,
++            api_version=self.config.api_version,
++            api_key=self.config.choose_api_key(),
++            fallbacks=self.config.fallbacks,
++            **completion_kwargs,
++            **extra_args,
++            n=n,
++        )
+         try:
+-            response: litellm.types.utils.ModelResponse = litellm.completion(  # type: ignore
+-                model=self.config.name,
+-                messages=messages,
+-                temperature=self.config.temperature if temperature is None else temperature,
+-                top_p=self.config.top_p,
+-                api_version=self.config.api_version,
+-                api_key=self.config.choose_api_key(),
+-                fallbacks=self.config.fallbacks,
+-                **completion_kwargs,
+-                **extra_args,
+-                n=n,
+-            )
++            if self.config.stream:
++                # Some gateways/proxies require/prefer streaming. Collect the
++                # chunks and reassemble them into a normal ModelResponse so all
++                # downstream code (cost, message, tool_calls) is unchanged.
++                # include_usage keeps token/cost accounting intact.
++                _chunks = list(
++                    litellm.completion(stream=True, stream_options={"include_usage": True}, **_call_kwargs)
++                )
++                response: litellm.types.utils.ModelResponse = litellm.stream_chunk_builder(  # type: ignore
++                    _chunks, messages=messages
++                )
++            else:
++                response: litellm.types.utils.ModelResponse = litellm.completion(**_call_kwargs)  # type: ignore
+         except litellm.exceptions.ContextWindowExceededError as e:
+             raise ContextWindowExceededError from e
+         except litellm.exceptions.ContentPolicyViolationError as e:
