@@ -49,7 +49,21 @@ def load_env_file(path: str) -> None:
             if "=" not in line:
                 continue
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+            os.environ.setdefault(k.strip(), _envval(v))
+
+
+def _envval(v: str) -> str:
+    """Parse an env-file value: honor quotes, else strip an inline ` # comment`."""
+    v = v.strip()
+    if v[:1] in ("'", '"'):
+        q = v[0]
+        end = v.find(q, 1)
+        return v[1:end] if end != -1 else v[1:]
+    for i, ch in enumerate(v):  # comment must follow whitespace (so URLs with # survive)
+        if ch == "#" and i > 0 and v[i - 1] in " \t":
+            v = v[:i]
+            break
+    return v.strip()
 
 
 def resolve(args):
