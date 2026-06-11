@@ -111,6 +111,37 @@ def override_deployment(src_yaml: str, dst_yaml: str, image=None,
     return dst_yaml
 
 
+def ensure_registry(a) -> str:
+    """Return a litellm model-registry json that includes a.model_name.
+
+    SWE-agent looks up litellm's registry by the EXACT model name to decide
+    `supports_function_calling`. Gateway model names are deployment-specific
+    (e.g. openai/pangu35b vs the committed openai/pangu_auto), so we start from
+    the committed registry (--registry) and ensure an entry for the model being
+    run. Use --parse thought_action to override if a model isn't tool-capable.
+    """
+    reg = {}
+    if a.registry and os.path.exists(a.registry):
+        try:
+            with open(a.registry, "r", encoding="utf-8") as fh:
+                reg = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            reg = {}
+    if a.model_name not in reg:
+        reg[a.model_name] = {
+            "max_input_tokens": a.max_input_tokens or 131072,
+            "max_output_tokens": 8192,
+            "input_cost_per_token": 0, "output_cost_per_token": 0,
+            "litellm_provider": "openai", "mode": "chat",
+            "supports_function_calling": True, "supports_tool_choice": True,
+        }
+    os.makedirs(a.outdir, exist_ok=True)
+    path = os.path.join(a.outdir, "registry.json")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(reg, fh, indent=2)
+    return path
+
+
 def build_cmd(a) -> list[str]:
     instances = a.instances or os.path.join(
         SCRIPTS_DIR, f"{a.variant}_instances.yaml"
@@ -138,8 +169,8 @@ def build_cmd(a) -> list[str]:
         cmd += ["--agent.model.api_base", a.api_base]
     if a.api_key:
         cmd += ["--agent.model.api_key", a.api_key]
-    if a.registry and os.path.exists(a.registry):
-        cmd += ["--agent.model.litellm_model_registry", a.registry]
+    if a.registry != "":
+        cmd += ["--agent.model.litellm_model_registry", ensure_registry(a)]
     if a.max_input_tokens:
         cmd += ["--agent.model.max_input_tokens", str(a.max_input_tokens)]
     if a.parse and a.parse != "function_calling":
