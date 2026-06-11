@@ -97,6 +97,23 @@ python scripts/run_model.py --model deepseek --variant descriptive \
 python scripts/report.py runs/*/scores.json
 ```
 
+### 7. Inspect a run (status + health)
+
+After a smoke or full run, get a per-task status/health report:
+
+```bash
+python scripts/run_status.py smoke_pangu35b      # slug (searches runs/)
+python scripts/run_status.py                     # most recent run
+```
+
+It reads the trajectory + preds + scores + logs and reports, per task: parser
+used, exit status, step count, patch size, score (PASS/fail + reason), tokens,
+wall-clock, and HEALTH flags. It separates **health** (did the job run cleanly)
+from **score** (did the model solve it) — e.g. `healthy` + `fail` means the
+harness worked and the model simply missed the task. Flags like `runtime_failed`,
+`empty_patch`, or `no_trajectory` point at real infra/agent problems; a
+first-attempt container retry shows as the informational note `slow_start`.
+
 ## Notes
 
 - **Native function-calling works out of the box.** `scripts/litellm_registry.json`
