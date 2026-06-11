@@ -144,6 +144,29 @@ def ensure_registry(a) -> str:
     return path
 
 
+def unsupported_model_flags(sweagent_bin, flags):
+    """Return the subset of `flags` [(flag, value), ...] this SWE-agent build
+    rejects. Probes by running a minimal run-batch that fails AFTER arg parsing
+    (bogus instances path); flags listed in 'unrecognized arguments' are absent.
+    SWE-agent builds drift (e.g. some lack litellm_model_registry; streaming
+    needs the patch), so we skip flags this build doesn't understand."""
+    if not flags:
+        return set()
+    cmd = [sweagent_bin, "run-batch", "--instances.type", "expert_file",
+           "--instances.path", "/nonexistent_rb_flag_probe.yaml",
+           "--agent.model.name", "probe", "--output_dir", "/tmp/rb_flag_probe"]
+    for f, v in flags:
+        cmd += [f, v]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return set()  # can't probe -> assume supported, let the real run surface it
+    text = (r.stdout or "") + (r.stderr or "")
+    if "unrecognized arguments" not in text:
+        return set()
+    return {f for f, _ in flags if f in text}
+
+
 def build_cmd(a) -> list[str]:
     instances = a.instances or os.path.join(
         SCRIPTS_DIR, f"{a.variant}_instances.yaml"
@@ -167,11 +190,21 @@ def build_cmd(a) -> list[str]:
         "--num_workers", str(a.workers),
         "--output_dir", a.outdir,
     ]
+    # Skip optional flags this SWE-agent build doesn't understand (version drift).
+    probe = []
+    if a.registry != "":
+        probe.append(("--agent.model.litellm_model_registry", "/tmp/_rbprobe"))
+    if a.stream:
+        probe.append(("--agent.model.stream", "true"))
+    bad = unsupported_model_flags(a.sweagent_bin, probe)
+    for f in sorted(bad):
+        print(f"# note: this SWE-agent build lacks {f} — skipping it", file=sys.stderr)
+
     if a.api_base:
         cmd += ["--agent.model.api_base", a.api_base]
     if a.api_key:
         cmd += ["--agent.model.api_key", a.api_key]
-    if a.registry != "":
+    if a.registry != "" and "--agent.model.litellm_model_registry" not in bad:
         cmd += ["--agent.model.litellm_model_registry", ensure_registry(a)]
     if a.max_input_tokens:
         cmd += ["--agent.model.max_input_tokens", str(a.max_input_tokens)]
@@ -186,7 +219,7 @@ def build_cmd(a) -> list[str]:
         cmd += ["--agent.model.top_p", str(a.top_p)]
     if a.max_output_tokens:
         cmd += ["--agent.model.max_output_tokens", str(a.max_output_tokens)]
-    if a.stream:
+    if a.stream and "--agent.model.stream" not in bad:
         cmd += ["--agent.model.stream", "true"]
     if a.extra_body:
         cmd += ["--agent.model.completion_kwargs",
