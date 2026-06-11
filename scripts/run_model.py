@@ -125,6 +125,8 @@ def build_cmd(a) -> list[str]:
         cmd += ["--agent.model.api_base", a.api_base]
     if a.api_key:
         cmd += ["--agent.model.api_key", a.api_key]
+    if a.registry and os.path.exists(a.registry):
+        cmd += ["--agent.model.litellm_model_registry", a.registry]
     if a.max_input_tokens:
         cmd += ["--agent.model.max_input_tokens", str(a.max_input_tokens)]
     if a.parse and a.parse != "function_calling":
@@ -209,6 +211,8 @@ def main() -> int:
                     "'stream: true'); for gateways that require/prefer streaming")
     ap.add_argument("--score-checkout", default="fork", choices=["fork", "local"])
     ap.add_argument("--sweagent-bin", default="sweagent")
+    ap.add_argument("--registry", default=os.path.join(SCRIPTS_DIR, "litellm_registry.json"),
+                    help="litellm model-registry json (capabilities/context); set '' to disable")
     ap.add_argument("--env-file", default=DEFAULT_ENV_FILE,
                     help="KEY=VALUE file with endpoints/tokens (default scripts/models.env)")
     ap.add_argument("--no-score", action="store_true")
