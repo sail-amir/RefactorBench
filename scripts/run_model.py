@@ -97,8 +97,8 @@ def _envval(v: str) -> str:
 
 
 def override_deployment(src_yaml: str, dst_yaml: str, image=None,
-                        startup_timeout=None) -> str:
-    """Write a copy of src_yaml with env.deployment.image / .startup_timeout set."""
+                        startup_timeout=None, docker_args=None) -> str:
+    """Write a copy of src_yaml with env.deployment.image/.startup_timeout/.docker_args set."""
     import yaml  # available in the SWE-agent (conda) env
     with open(src_yaml, "r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh)
@@ -108,6 +108,8 @@ def override_deployment(src_yaml: str, dst_yaml: str, image=None,
             dep["image"] = image
         if startup_timeout is not None:
             dep["startup_timeout"] = float(startup_timeout)
+        if docker_args:
+            dep["docker_args"] = (dep.get("docker_args") or []) + list(docker_args)
     with open(dst_yaml, "w", encoding="utf-8") as fh:
         yaml.safe_dump(data, fh, sort_keys=False, width=10**9, allow_unicode=True)
     return dst_yaml
@@ -174,11 +176,17 @@ def build_cmd(a) -> list[str]:
     if not os.path.exists(instances):
         sys.exit(f"instances file not found: {instances}\n"
                  f"(generate with: python scripts/gen_instances.py)")
-    if a.image or a.startup_timeout:
+    docker_args = list(a.docker_arg or [])
+    if a.insecure_git:
+        # Container's git skips TLS verification (restricted/MITM networks where
+        # github's cert chain isn't trusted inside the container).
+        docker_args += ["-e", "GIT_SSL_NO_VERIFY=1"]
+    if a.image or a.startup_timeout or docker_args:
         os.makedirs(a.outdir, exist_ok=True)
         instances = override_deployment(
             instances, os.path.join(a.outdir, "instances.yaml"),
             image=a.image, startup_timeout=a.startup_timeout,
+            docker_args=docker_args or None,
         )
 
     cmd = [
@@ -277,6 +285,11 @@ def main() -> int:
     ap.add_argument("--startup-timeout", type=float,
                     help="override env.deployment.startup_timeout seconds (default 180; "
                     "raise it when the host is heavily loaded)")
+    ap.add_argument("--insecure-git", action="store_true",
+                    help="set GIT_SSL_NO_VERIFY=1 in the container so the repo clone "
+                    "works behind a TLS-inspecting proxy / untrusted-CA network")
+    ap.add_argument("--docker-arg", action="append", default=[],
+                    help="extra arg passed to `docker run` (repeatable), e.g. --docker-arg -e --docker-arg K=V")
     ap.add_argument("--reasoning-effort",
                     help="enable model thinking via extra_body.reasoning_effort "
                     "(e.g. high) — for deepseek-v3.2 and similar reasoning models")
