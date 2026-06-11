@@ -65,6 +65,19 @@ Keep the `openai/` prefix on every `*_MODEL` — that routes litellm to `RB_API_
 source scripts/env.sh    # puts .venv on PATH, exports RB_TEST_PYTHON
 ```
 
+### 4b. Verify the gateway (recommended)
+
+Before spending on a SWE-agent run, confirm the endpoint/key/model name work:
+
+```bash
+python scripts/check_gateway.py --model deepseek --thinking
+```
+
+It probes the gateway (resolving the same `models.env` config) for: basic chat
+(reachable + auth + model name), native `tool_calls` (function_calling), and —
+with `--thinking` — a `reasoning_content` channel. Exit 0 = healthy. Use
+`--model claude|glm|pangu` or `--model-name openai/<name>` for others.
+
 ### 5. Smoke test (1 flask task)
 
 ```bash
