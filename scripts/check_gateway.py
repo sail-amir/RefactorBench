@@ -89,32 +89,49 @@ def post(url, key, body, timeout):
     return data, time.time() - t0
 
 
-def probe_chat(url, key, model, timeout):
-    body = {"model": model, "messages": [{"role": "user", "content": "Reply with: ok"}],
-            "max_tokens": 8}
+def _dump(tag, d, raw):
+    if raw:
+        print(f"{DIM}--- raw {tag} response ---{RESET}")
+        print(json.dumps(d, indent=2, ensure_ascii=False))
+        print(f"{DIM}--- end {tag} ---{RESET}")
+
+
+def probe_chat(url, key, model, timeout, raw=False):
+    # Budget must be generous: thinking models spend tokens on reasoning before
+    # emitting content, so a tiny max_tokens yields empty content (finish=length).
+    body = {"model": model, "messages": [{"role": "user", "content": "Reply with the word: ok"}],
+            "max_tokens": 128}
     try:
         d, dt = post(url, key, body, timeout)
-        msg = d.get("choices", [{}])[0].get("message", {})
+        _dump("chat", d, raw)
+        ch = d.get("choices", [{}])[0]
+        msg = ch.get("message", {})
         content = (msg.get("content") or "").strip()
+        rc = (msg.get("reasoning_content") or "").strip()
+        fr = ch.get("finish_reason")
         if content:
-            return True, f"{dt*1000:.0f}ms, content={content[:30]!r}"
-        return False, f"200 but empty content: {json.dumps(d)[:160]}"
+            return True, f"{dt*1000:.0f}ms, content={content[:40]!r}"
+        if rc:
+            return True, (f"{dt*1000:.0f}ms, content empty but reasoning_content len={len(rc)} "
+                          f"(thinking model; finish_reason={fr})")
+        return False, f"200 but empty content & no reasoning (finish_reason={fr}): {json.dumps(d)[:200]}"
     except urllib.error.HTTPError as e:
         return False, f"HTTP {e.code}: {e.read().decode()[:160]}"
     except Exception as e:
         return False, f"{type(e).__name__}: {str(e)[:140]}"
 
 
-def probe_tools(url, key, model, timeout):
+def probe_tools(url, key, model, timeout, raw=False):
     body = {"model": model,
             "messages": [{"role": "user", "content": "List files here. Call run_bash."}],
             "tools": [{"type": "function", "function": {
                 "name": "run_bash", "description": "Run a bash command",
                 "parameters": {"type": "object", "properties": {
                     "command": {"type": "string"}}, "required": ["command"]}}}],
-            "tool_choice": "auto", "max_tokens": 60}
+            "tool_choice": "auto", "max_tokens": 256}
     try:
         d, dt = post(url, key, body, timeout)
+        _dump("tools", d, raw)
         tc = d.get("choices", [{}])[0].get("message", {}).get("tool_calls")
         if tc:
             return True, f"{dt*1000:.0f}ms, tool_call={tc[0]['function']['name']}"
@@ -125,12 +142,13 @@ def probe_tools(url, key, model, timeout):
         return False, f"{type(e).__name__}: {str(e)[:120]}"
 
 
-def probe_thinking(url, key, model, timeout):
+def probe_thinking(url, key, model, timeout, raw=False):
     body = {"model": model,
             "messages": [{"role": "user", "content": "What is 17*23? Think step by step."}],
-            "reasoning_effort": "high", "max_tokens": 400}
+            "reasoning_effort": "high", "max_tokens": 600}
     try:
         d, dt = post(url, key, body, timeout)
+        _dump("thinking", d, raw)
         msg = d.get("choices", [{}])[0].get("message", {})
         rc = msg.get("reasoning_content")
         u = d.get("usage", {}) or {}
@@ -158,6 +176,8 @@ def main() -> int:
     ap.add_argument("--api-key")
     ap.add_argument("--env-file", default=DEFAULT_ENV_FILE)
     ap.add_argument("--thinking", action="store_true", help="also probe reasoning_effort")
+    ap.add_argument("--raw", action="store_true",
+                    help="print the full untrimmed JSON response from each probe")
     ap.add_argument("--timeout", type=float, default=60)
     a = ap.parse_args()
 
@@ -177,11 +197,12 @@ def main() -> int:
     print(f"api_key : {key[:6]}…{key[-2:] if len(key) > 8 else ''}  ({len(key)} chars)")
     print("probes  :")
 
-    ok_chat, d = probe_chat(url, key, model, a.timeout); line("chat", ok_chat, d)
-    if ok_chat:
-        ok_tools, d = probe_tools(url, key, model, a.timeout); line("tools", ok_tools, d)
+    ok_chat, d = probe_chat(url, key, model, a.timeout, a.raw); line("chat", ok_chat, d)
+    # With --raw, run the other probes even if chat looked empty, so you see everything.
+    if ok_chat or a.raw:
+        ok_tools, d = probe_tools(url, key, model, a.timeout, a.raw); line("tools", ok_tools, d)
         if a.thinking:
-            ok_t, d = probe_thinking(url, key, model, a.timeout); line("thinking", ok_t, d)
+            ok_t, d = probe_thinking(url, key, model, a.timeout, a.raw); line("thinking", ok_t, d)
 
     if ok_chat:
         print(f"\n{GREEN}endpoint healthy for {model}{RESET}")
