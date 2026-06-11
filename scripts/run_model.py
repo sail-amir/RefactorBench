@@ -270,6 +270,34 @@ def resolve_sampling(a) -> None:
     a.extra_body = extra
 
 
+def _auto_parse(model_name, api_base, api_key) -> str:
+    """Resolve ``--parse auto`` by probing the gateway once for native tool_calls.
+
+    Enable ``function_calling`` ONLY when the gateway positively returns a
+    tool_call; any failure (probe unavailable, no creds, HTTP/transport error, or
+    a response without tool_calls) falls back to ``thought_action``, which works
+    regardless of FC support. NOTE: a single probe confirms FC is *possible*, not
+    *reliable* — a gateway that returns tool_calls only intermittently still
+    passes here (use ``--parse thought_action`` explicitly if FC is flaky).
+    """
+    try:
+        from check_gateway import probe_tools
+    except Exception as e:  # pragma: no cover - import guard
+        print(f"# auto-parse: probe unavailable ({e}); falling back to thought_action")
+        return "thought_action"
+    if not api_base or not api_key:
+        print("# auto-parse: no api_base/api_key to probe; falling back to thought_action")
+        return "thought_action"
+    # The gateway expects the bare model name; strip the litellm provider prefix.
+    model = model_name.split("/", 1)[1] if "/" in model_name else model_name
+    url = api_base.rstrip("/") + "/chat/completions"
+    ok, detail = probe_tools(url, api_key, model, timeout=30)
+    decision = "function_calling" if ok else "thought_action"
+    print(f"# auto-parse: native tool_calls {'OK' if ok else 'absent'} "
+          f"-> parse={decision} ({detail})")
+    return decision
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -278,7 +306,9 @@ def main() -> int:
                     choices=["base", "descriptive", "lazy"])
     ap.add_argument("--slug", help="output dir slug (default: preset slug)")
     ap.add_argument("--model-name", help="override litellm model name")
-    ap.add_argument("--parse", help="function_calling | thought_action")
+    ap.add_argument("--parse", help="function_calling | thought_action | auto "
+                    "(auto: probe the gateway once for native tool_calls; enable "
+                    "function_calling only if confirmed, else thought_action)")
     ap.add_argument("--cost", type=float, help="per_instance_cost_limit (0 disables)")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--api-base")
@@ -341,6 +371,8 @@ def main() -> int:
     a.api_key = a.api_key or env("API_KEY") or os.environ.get("RB_API_KEY")
     if a.max_input_tokens == 0 and preset.get("max_input_tokens"):
         a.max_input_tokens = preset["max_input_tokens"]
+    if a.parse == "auto":
+        a.parse = _auto_parse(a.model_name, a.api_base, a.api_key)
     resolve_sampling(a)
     slug = a.slug or preset.get("slug") or a.model_name.split("/")[-1]
     a.outdir = os.path.join(REPO_ROOT, "runs", f"{slug}__{a.variant}")
