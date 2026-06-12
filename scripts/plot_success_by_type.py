@@ -16,6 +16,10 @@ Usage:
     python scripts/plot_success_by_type.py runs/<slug>__descriptive/scores.json \
         --mode counts --sort support --out /tmp/by_type.png
 
+    # compare two experiments: grouped A-vs-B stacked bars per type
+    python scripts/plot_success_by_type.py runs/glm-5.1__descriptive \
+        --compare runs/pangu35b__descriptive --labels glm pangu --sort delta
+
 Notes:
 - The type labels are derived from the *descriptive* instructions, but the
   underlying refactor is the same across base/lazy/descriptive, so the mapping
@@ -160,46 +164,174 @@ def plot(agg, meta, out, mode="rate", sort="rate", min_support=1, title=None):
     print(f"wrote {out}")
 
 
+def plot_compare(aggA, metaA, aggB, metaB, out, labels, mode="rate",
+                 sort="rate", min_support=1, title=None):
+    """Per type, two grouped stacked (pass/fail) bars: experiment A vs B.
+
+    A is drawn solid, B hatched; pass=green, fail=red. Each bar is annotated
+    with its own success rate and support, which may differ between runs if the
+    two runs scored different task subsets.
+    """
+    labA, labB = labels
+    # union of types present (>= min_support) in either experiment, keep stable
+    types = sorted(set(aggA) | set(aggB))
+
+    def rate(agg, t):
+        p, n = agg.get(t, [0, 0])
+        return (p / n) if n else 0.0, p, n
+
+    rows = []
+    for t in types:
+        rA, pA, nA = rate(aggA, t)
+        rB, pB, nB = rate(aggB, t)
+        if max(nA, nB) < min_support:
+            continue
+        rows.append((t, rA, pA, nA, rB, pB, nB))
+    if not rows:
+        sys.exit("no types meet --min-support; nothing to plot")
+
+    if sort == "rate":
+        rows.sort(key=lambda r: (-r[1], -r[3], r[0]))      # by A's rate
+    elif sort == "support":
+        rows.sort(key=lambda r: (-(r[3] + r[6]), r[0]))    # by combined support
+    elif sort == "delta":
+        rows.sort(key=lambda r: (-(r[4] - r[1]), r[0]))    # biggest B-minus-A gain
+    else:
+        rows.sort(key=lambda r: r[0])
+
+    types = [r[0] for r in rows]
+    x = list(range(len(types)))
+    w = 0.40
+    ytop = 100 if mode == "rate" else max(max(r[3], r[6]) for r in rows)
+
+    fig, ax = plt.subplots(figsize=(max(9, len(types) * 1.25), 6.2))
+
+    def draw(offset, hatch, idx_rate, idx_p, idx_n):
+        for xi, r in enumerate(rows):
+            ra, p, n = r[idx_rate], r[idx_p], r[idx_n]
+            if n == 0:
+                continue
+            ph = ra * 100 if mode == "rate" else p
+            fh = (100 - ph) if mode == "rate" else (n - p)
+            ax.bar(xi + offset, ph, w, color=PASS_COLOR, hatch=hatch,
+                   edgecolor="white", linewidth=0.5)
+            ax.bar(xi + offset, fh, w, bottom=ph, color=FAIL_COLOR, alpha=0.55,
+                   hatch=hatch, edgecolor="white", linewidth=0.5)
+            top = 100 if mode == "rate" else n
+            ax.text(xi + offset, top + ytop * 0.015, f"{ra*100:.0f}%\nn={n}",
+                    ha="center", va="bottom", fontsize=7, linespacing=1.05)
+
+    draw(-w / 2 - 0.01, None, 1, 2, 3)   # A solid
+    draw(+w / 2 + 0.01, "//", 4, 5, 6)   # B hatched
+
+    if mode == "rate":
+        if metaA.get("pass_rate") is not None:
+            ax.axhline(metaA["pass_rate"] * 100, ls="--", lw=1.0, color="#1b5e20")
+        if metaB.get("pass_rate") is not None:
+            ax.axhline(metaB["pass_rate"] * 100, ls=":", lw=1.2, color="#0d3b66")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(types, rotation=40, ha="right", fontsize=9)
+    ax.set_ylabel("share of tasks (%)" if mode == "rate" else "# tasks")
+    ax.set_ylim(0, ytop * 1.2)
+
+    from matplotlib.patches import Patch
+    legend = [
+        Patch(facecolor=PASS_COLOR, label="Passed"),
+        Patch(facecolor=FAIL_COLOR, alpha=0.55, label="Failed"),
+        Patch(facecolor="#bbbbbb", label=f"A: {labA}"),
+        Patch(facecolor="#bbbbbb", hatch="//", label=f"B: {labB}"),
+    ]
+    ax.legend(handles=legend, loc="upper right", fontsize=8, framealpha=0.9, ncol=2)
+
+    if title is None:
+        title = (f"Success rate by refactoring type — A vs B\n"
+                 f"A: {labA} ({metaA['n']} tasks"
+                 + (f", {metaA['pass_rate']*100:.0f}%" if metaA.get("pass_rate") is not None else "")
+                 + f")   vs   B: {labB} ({metaB['n']} tasks"
+                 + (f", {metaB['pass_rate']*100:.0f}%" if metaB.get("pass_rate") is not None else "") + ")")
+    ax.set_title(title, fontsize=10.5)
+    ax.grid(axis="y", ls=":", alpha=0.4)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    fig.savefig(out, dpi=150)
+    print(f"wrote {out}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("result", help="run dir (with scores.json) or a scores.json path")
+    ap.add_argument("--compare", metavar="RESULT2",
+                    help="second run dir/scores.json; draws grouped A-vs-B stacked bars per type")
+    ap.add_argument("--labels", nargs=2, metavar=("A", "B"),
+                    help="legend labels for the two experiments (default: their slugs)")
     ap.add_argument("--taxonomy", default=DEFAULT_TAXONOMY,
                     help="task->types jsonl (default analysis/descriptive_task_types.jsonl)")
-    ap.add_argument("--out", help="output png (default <result_dir>/success_by_type.png)")
+    ap.add_argument("--out", help="output png (default <result_dir>/success_by_type[_compare].png)")
     ap.add_argument("--mode", choices=["rate", "counts"], default="rate",
                     help="rate: 100%% normalized stacks (default); counts: raw pass/fail counts")
-    ap.add_argument("--sort", choices=["rate", "support", "name"], default="rate")
+    ap.add_argument("--sort", choices=["rate", "support", "name", "delta"], default="rate",
+                    help="delta (compare only): sort by B-minus-A success-rate gain")
     ap.add_argument("--min-support", type=int, default=1,
                     help="drop types with fewer than N scored tasks")
     ap.add_argument("--title", help="override chart title")
     a = ap.parse_args()
 
-    scored, meta = load_scores(a.result)
     taxonomy = load_taxonomy(a.taxonomy)
-    agg, missing = aggregate(scored, taxonomy)
-    if missing:
-        print(f"WARNING: {len(missing)} scored task(s) absent from taxonomy "
-              f"(skipped): {', '.join(sorted(missing)[:6])}"
-              + (" ..." if len(missing) > 6 else ""), file=sys.stderr)
 
-    out = a.out or os.path.join(
-        os.path.dirname(meta["path"]), "success_by_type.png")
+    def _load(path):
+        scored, meta = load_scores(path)
+        agg, missing = aggregate(scored, taxonomy)
+        if missing:
+            print(f"WARNING [{meta['slug']}]: {len(missing)} scored task(s) absent "
+                  f"from taxonomy (skipped): {', '.join(sorted(missing)[:6])}"
+                  + (" ..." if len(missing) > 6 else ""), file=sys.stderr)
+        return agg, meta
 
-    # text table (same order as chart sort)
-    rows = sorted(((t, p, n) for t, (p, n) in agg.items() if n >= a.min_support),
-                  key=lambda x: (-(x[1] / x[2]), -x[2]))
-    width = max((len(t) for t, _, _ in rows), default=10)
-    print(f"\n{'type':<{width}}  rate    passed/support")
-    print("-" * (width + 24))
-    for t, p, n in rows:
-        print(f"{t:<{width}}  {p/n*100:5.1f}%   {p}/{n}")
-    print(f"\noverall task-level pass rate: "
-          f"{(meta['pass_rate']*100):.1f}%  ({meta['n']} tasks)"
-          if meta.get("pass_rate") is not None else "")
+    aggA, metaA = _load(a.result)
 
-    plot(agg, meta, out, mode=a.mode, sort=a.sort,
-         min_support=a.min_support, title=a.title)
+    if not a.compare:
+        out = a.out or os.path.join(os.path.dirname(metaA["path"]), "success_by_type.png")
+        rows = sorted(((t, p, n) for t, (p, n) in aggA.items() if n >= a.min_support),
+                      key=lambda x: (-(x[1] / x[2]), -x[2]))
+        width = max((len(t) for t, _, _ in rows), default=10)
+        print(f"\n{'type':<{width}}  rate    passed/support")
+        print("-" * (width + 24))
+        for t, p, n in rows:
+            print(f"{t:<{width}}  {p/n*100:5.1f}%   {p}/{n}")
+        if metaA.get("pass_rate") is not None:
+            print(f"\noverall task-level pass rate: {metaA['pass_rate']*100:.1f}%  ({metaA['n']} tasks)")
+        plot(aggA, metaA, out, mode=a.mode, sort=a.sort,
+             min_support=a.min_support, title=a.title)
+        return 0
+
+    # --- comparison mode ---
+    aggB, metaB = _load(a.compare)
+    labels = a.labels or [metaA["slug"], metaB["slug"]]
+    out = a.out or os.path.join(os.path.dirname(metaA["path"]), "success_by_type_compare.png")
+
+    types = sorted(set(aggA) | set(aggB))
+    width = max((len(t) for t in types), default=10)
+    print(f"\n{'type':<{width}}   A rate (p/n)    B rate (p/n)    delta")
+    print("-" * (width + 42))
+    def fmt(agg, t):
+        p, n = agg.get(t, [0, 0])
+        return (p / n if n else 0.0, p, n)
+    for t in sorted(types, key=lambda t: -(fmt(aggB, t)[0] - fmt(aggA, t)[0])):
+        ra, pa, na = fmt(aggA, t); rb, pb, nb = fmt(aggB, t)
+        if max(na, nb) < a.min_support:
+            continue
+        print(f"{t:<{width}}   {ra*100:5.1f}% ({pa}/{na})   {rb*100:5.1f}% ({pb}/{nb})   "
+              f"{(rb-ra)*100:+5.1f}")
+    print(f"\nA={labels[0]}  overall "
+          + (f"{metaA['pass_rate']*100:.1f}%" if metaA.get('pass_rate') is not None else "?")
+          + f" ({metaA['n']})   |   B={labels[1]}  overall "
+          + (f"{metaB['pass_rate']*100:.1f}%" if metaB.get('pass_rate') is not None else "?")
+          + f" ({metaB['n']})")
+
+    plot_compare(aggA, metaA, aggB, metaB, out, labels, mode=a.mode,
+                 sort=a.sort, min_support=a.min_support, title=a.title)
     return 0
 
 
