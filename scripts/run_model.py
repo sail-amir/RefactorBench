@@ -351,7 +351,9 @@ def main() -> int:
     ap.add_argument("--stream", action="store_true", default=False,
                     help="stream completions (also settable per-model via sampling.yaml "
                     "'stream: true'); for gateways that require/prefer streaming")
-    ap.add_argument("--score-checkout", default="fork", choices=["fork", "local"])
+    ap.add_argument("--score-checkout", default="local", choices=["fork", "local"],
+                    help="score against the bundled repositories/ (local, default, offline & "
+                    "matches the baked agent repo) or a fresh dhruvji/* clone (fork, needs network)")
     ap.add_argument("--sweagent-bin", default="sweagent")
     ap.add_argument("--registry", default=os.path.join(SCRIPTS_DIR, "litellm_registry.json"),
                     help="litellm model-registry json (capabilities/context); set '' to disable")

@@ -33,12 +33,16 @@ bash setup.sh
 ```
 
 Idempotent. It:
-- creates `.venv` and installs **SWE-agent v1.1.0** (+ optional streaming patch),
-- builds the **`rb-swerex:py311`** Docker image (swe-rex preinstalled so
-  containers start fast),
+- creates `.venv` and installs **SWE-agent v1.1.0** (+ streaming/reasoning-capture patch),
+- builds the **`rb-swerex:py311`** Docker image with the **vendored `repositories/`
+  baked in** (each at `/<repo>`, as a fresh git repo) so tasks need **no GitHub
+  access** — see "Offline mode" below,
 - generates the base/lazy instance yamls and a 1-task `smoke_instances.yaml`,
 - copies `scripts/models.env.example → scripts/models.env`,
 - writes `scripts/env.sh`.
+
+> The image build skips if `rb-swerex:py311` already exists — run
+> `docker rmi rb-swerex:py311 && bash setup.sh` to rebuild with the baked repos.
 
 Override defaults via env vars, e.g. `SWE_AGENT_REF=main IMAGE=rb-swerex:py311 bash setup.sh`.
 
@@ -126,8 +130,14 @@ first-attempt container retry shows as the informational note `slow_start`.
   faster (~6 min/task vs ~17 min under load).
 - **`--reasoning-effort high`** enables thinking models (e.g. `deepseek-v3.2`);
   slower but typically higher quality.
-- **Scoring** defaults to `--checkout fork` (clones `dhruvji/*_refactor`). Use
-  `--checkout local` to score against the bundled `repositories/` copies offline.
+- **Offline mode (no GitHub access).** The instance yamls use the
+  `preexisting` repo type with `reset: false`, pointing at the repos **baked into
+  the image** at `/<repo>` — so SWE-agent never clones or `git fetch`es from
+  GitHub (this avoids the per-task `Connection timed out` failures on
+  restricted-network hosts). Scoring matches: **`run_model.py` defaults to
+  `--score-checkout local`** (the bundled `repositories/`, same base the agent
+  saw). Pass `--score-checkout fork` only if you want a fresh `dhruvji/*` clone
+  and have network. Nothing in a run touches GitHub by default.
 - **Models:** presets are `claude | deepseek | glm | pangu`; variants are
   `base | descriptive | lazy`. Trajectories are saved per task under
   `runs/<slug>__<variant>/<id>/<id>.traj` (gitignored — local only).

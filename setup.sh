@@ -100,10 +100,34 @@ fi
 log "Building Docker image $IMAGE"
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    echo "$IMAGE already present"
+    echo "$IMAGE already present (docker rmi $IMAGE to force a rebuild)"
   else
-    printf 'FROM python:3.11\nRUN pip install --no-cache-dir swe-rex\n' \
-      | docker build -t "$IMAGE" - || echo "WARNING: docker build failed"
+    # Bake the vendored benchmark repos into the image so tasks need NO GitHub
+    # access — each repo is COPYed to /<name> and made a fresh git repo with a
+    # base commit. Combined with the 'preexisting' repo config + reset:false in
+    # the instance yamls, this removes the per-task clone/fetch (offline mode).
+    echo "baking $(ls -d "$REPO_ROOT"/repositories/*_refactor 2>/dev/null | wc -l) repos into $IMAGE (offline mode) ..."
+    _dockerfile="$(mktemp)"
+    cat > "$_dockerfile" <<'DOCKERFILE'
+FROM python:3.11
+ENV PYTHONSAFEPATH=1
+RUN pip install --no-cache-dir swe-rex
+# Build context is repositories/ : COPY the *_refactor repos to the image root.
+COPY . /
+RUN set -e; \
+    git config --global user.email rb@local; \
+    git config --global user.name RefactorBench; \
+    git config --global init.defaultBranch main; \
+    for d in /*_refactor; do \
+      rm -rf "$d/.git"; \
+      git -C "$d" init -q; \
+      git -C "$d" add -A; \
+      git -C "$d" commit -q -m base --no-verify; \
+    done
+DOCKERFILE
+    docker build -t "$IMAGE" -f "$_dockerfile" "$REPO_ROOT/repositories" \
+      || echo "WARNING: docker build failed"
+    rm -f "$_dockerfile"
   fi
 else
   echo "WARNING: Docker not available/running — required to run SWE-agent."

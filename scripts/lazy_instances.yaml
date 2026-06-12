@@ -4,8 +4,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add logging to the get_debug_flag function and adjust log parameter usage accordingly.
@@ -15,8 +16,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift standalone functions from debughelpers to helpers and adjust imports.
@@ -26,8 +28,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update usage of render_template_string in flask.
@@ -37,8 +40,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the main function but retain the package initialization name.
@@ -48,8 +52,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the helper function for clarity but maintain external API usage.
@@ -59,8 +64,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/flask_refactor
+      type: preexisting
+      repo_name: flask_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter to get_flashed_messages, defaulting to false.
@@ -70,8 +76,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor connection.py to use a new class, ConnectionUtils.
@@ -81,8 +88,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the is_systemd_managed parameter in service.py to include a default log option.
@@ -92,8 +100,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Consolidate namespace.py classes into compat.py and adjust references.
@@ -103,8 +112,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the function for better clarity and adjust all references in the codebase.
@@ -114,8 +124,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Transfer content from quoting to splitter and adjust references.
@@ -125,8 +136,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor heuristic_log_sanitize and missing_required_lib into module_utils/utils.py.
@@ -136,8 +148,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update references of 'sort_groups' to 'group_sort' in the code.
@@ -147,8 +160,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move specific functions to a new file and adjust imports accordingly.
@@ -158,8 +172,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename lenient_lowercase to lowercase_of_list and update all references throughout the repository.
@@ -169,8 +184,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update references for the data.py file in the inventory folder.
@@ -180,8 +196,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/ansible_refactor
+      type: preexisting
+      repo_name: ansible_refactor
+      reset: false
   problem_statement:
     type: text
     text: Modify get_group_vars to include a logging parameter defaulting to true.
@@ -191,8 +208,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce a ReferenceContext class for parameters in field_references and utilize it accordingly.
@@ -202,8 +220,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the file_move_safe function to safe_file_move and adjust documentation references accordingly.
@@ -213,8 +232,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Implement a timezone class in django/forms/utils and adjust references accordingly.
@@ -224,8 +244,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift the function from config.py to a new file within the same directory.
@@ -235,8 +256,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move contents from dates.py to dateformat.py and update the repository.
@@ -246,8 +268,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: 'Split the function into two: one for apps, one for models.'
@@ -257,8 +280,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Merge hashable and itercompat into a single file named able.py and update their tests accordingly.
@@ -268,8 +292,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a logging parameter to get_resolver and disable logging in all references.
@@ -279,8 +304,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add none handling to the duration string function and include a corresponding test.
@@ -290,8 +316,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Integrate optional logging into the constant_time_compare function and adjust usage as needed, excluding the test suite.
@@ -301,8 +328,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update resolve_error_handler to include an optional logging feature, defaulting to off.
@@ -312,8 +340,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a new PathTraversal exception and update the repository.
@@ -323,8 +352,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a string-to-python converter class to the utils in django/db/backends.
@@ -334,8 +364,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift contents from django/db/models/constants to base and make necessary repo updates.
@@ -345,8 +376,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce a ReferenceContext class for parameter handling in add_dependency.
@@ -356,8 +388,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move adapt_method_mode from base.py to handler_utils.py and adjust its references.
@@ -367,8 +400,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Remove the cache utils from django/core and integrate directly where used.
@@ -378,8 +412,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/django_refactor
+      type: preexisting
+      repo_name: django_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor the check_response function to a new module called handler_utils.py.
@@ -389,8 +424,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename autoretry file to retry and update the repository.
@@ -400,8 +436,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename host_format to format_host in the codebase.
@@ -411,8 +448,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the truncate function in text.py to truncate_text and adjust all references accordingly.
@@ -422,8 +460,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Relocate expand_router_string and adjust imports accordingly.
@@ -433,8 +472,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the relay import in test_request of mro_lookup.
@@ -444,8 +484,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift dump_message to utils serialization.py and make necessary updates to align with this change.
@@ -455,8 +496,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Merge the unpickle methods and clean up tests.
@@ -466,8 +508,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter to node_format function and update all relevant calls.
@@ -477,8 +520,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Relocate `evaluate_promises` function to `serialization.py` and adjust its references.
@@ -488,8 +532,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter to get_digest_algorithm, defaulting to False, and set it to True in all non-testing references.
@@ -499,8 +544,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move `resolve_all` from `annotations` to `annotations_utils.py` and handle necessary imports.
@@ -510,8 +556,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/celery_refactor
+      type: preexisting
+      repo_name: celery_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the function and adjust all its references in the codebase.
@@ -521,8 +568,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update the repository for the renamed exceptions_handlers.py file.
@@ -532,8 +580,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the function for clarity and adjust all references accordingly.
@@ -543,8 +592,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update the repository files for the new script name.
@@ -554,8 +604,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update references for the file in the openapi directory.
@@ -565,8 +616,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce an optional logging parameter in the generate_option_id_for_path function, defaulting to false.
@@ -576,8 +628,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/fastapi_refactor
+      type: preexisting
+      repo_name: fastapi_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update the function name across the repo.
@@ -587,8 +640,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor cookies.py by creating a new class CookieUtils with specified functions.
@@ -598,8 +652,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift all content from _internal_utils to utils and adjust references accordingly.
@@ -609,8 +664,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift the hooks.py contents to sessions.py and adjust references within the repo.
@@ -620,8 +676,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Modify the log parameter in get_encoding_from_headers and adjust defaults accordingly across files.
@@ -631,8 +688,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move all warnings from exceptions.py to a new file named warnings.py and update references.
@@ -642,8 +700,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter to the select proxy function and adjust its usage across the repository.
@@ -653,8 +712,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update `resolve_proxies` to include a logging option, defaulting to off in utils but on elsewhere.
@@ -664,8 +724,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename LookupDict to DictLookup and adjust references accordingly.
@@ -675,8 +736,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor the key-value list conversion functions into a single function and adjust the repository.
@@ -686,8 +748,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/requests_refactor
+      type: preexisting
+      repo_name: requests_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the function and update references.
@@ -697,8 +760,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor boto3mod to import functions from botomod for reduced redundancy.
@@ -708,8 +772,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the naming and usage of EX_NOPERM across the codebase.
@@ -719,8 +784,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the repository with renamed instances of EX_CANTCREAT to EX_CANTCREATE.
@@ -730,8 +796,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor boto3mod to import the paged_call function from botomod.
@@ -741,8 +808,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter to recursive_diff and adjust its usage accordingly.
@@ -752,8 +820,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update function names to reflect their specific conversions.
@@ -763,8 +832,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the repository by shortening the EX_UNAVAILABLE exitcode to EX_UNAVAIL.
@@ -774,8 +844,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor the placement of to_dict and to_value functions in the namecheap repository.
@@ -785,8 +856,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce a logging parameter to the function that defaults to False, and enable it everywhere except in tests.
@@ -796,8 +868,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the delete_directory function to include a logging option, defaulting to off but enabled in most cases.
@@ -807,8 +880,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the enumeration and update all its references in the repo.
@@ -818,8 +892,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename a file and update references in the repository.
@@ -829,8 +904,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename constant and update its references.
@@ -840,8 +916,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift the content of iam.py to aws utils and update the repo.
@@ -851,8 +928,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/salt_refactor
+      type: preexisting
+      repo_name: salt_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the identifier 'pem_finger' to 'pem_fingerprint' and adjust its references accordingly in the repository.
@@ -862,8 +940,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a logging parameter to disconnect_all with a default true value.
@@ -873,8 +952,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce a GunzipParams class to manage gunzip parameters.
@@ -884,8 +964,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor URL functions in commands/genspider to a new utils module.
@@ -895,8 +976,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename engine_status functions in scrapy/utils/engine.py to start with an underscore and update references accordingly.
@@ -906,8 +988,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the NotSupported exception to Unsupported in the codebase.
@@ -917,8 +1000,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move some functions from stats.py to a new file downloadermiddlewares.py and adjust imports as needed.
@@ -928,8 +1012,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor reactor-related functions into a new VerifyReactor class and update relevant documentation and references.
@@ -939,8 +1024,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move standalone functions from scrapy/spider files to a new file called spider_utils.py.
@@ -950,8 +1036,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Shift sitemap_urls_from_robots.py content from sitemap.py to url.py and adjust all related references.
@@ -961,8 +1048,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Incorporate a boolean log parameter into job_dir and adjust all relevant references.
@@ -972,8 +1060,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Adjust the class name in scrapy/utils/testproc.py to match the filename and update all references throughout the repository.
@@ -983,8 +1072,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Update the naming convention for description fields in scrapy commands.
@@ -994,8 +1084,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/scrapy_refactor
+      type: preexisting
+      repo_name: scrapy_refactor
+      reset: false
   problem_statement:
     type: text
     text: Add a log parameter with a default value to the xmliter function and adjust it in test calls.
@@ -1005,8 +1096,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move `dummy_executor` to `_globals.py`.
@@ -1016,8 +1108,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move and update the Resolver classes in the project.
@@ -1027,8 +1120,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename and update references for a method in the repository.
@@ -1038,8 +1132,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor `enable_pretty_logging` into a method in `OptionParser`.
@@ -1049,8 +1144,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Move the locale data to a more appropriate location.
@@ -1060,8 +1156,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Relocate logging-related functions to a new module.
@@ -1071,8 +1168,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Rename the HTTP1Connection class to HTTP1xConnection and update all references accordingly.
@@ -1082,8 +1180,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Introduce a dataclass for TCP client configurations in the repo.
@@ -1093,8 +1192,9 @@
       type: docker
       image: python:3.11
     repo:
-      type: github
-      github_url: https://github.com/dhruvji/tornado_refactor
+      type: preexisting
+      repo_name: tornado_refactor
+      reset: false
   problem_statement:
     type: text
     text: Refactor `tornado/options.py` by relocating its functions to `global_options.py` and adjust imports throughout the repository.
