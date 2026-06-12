@@ -11,9 +11,12 @@ Two sources are shown because they measure different things:
      `usage`, so tokens_received is often badly under-reported (this is why we also
      tokenize). These give per-task totals only, not per-step.
   2. Tokenized per step (tiktoken `cl100k_base`) — we re-tokenize each step's
-     `query` (the full prompt sent that call) and `response` (the text returned),
-     which yields true per-step distributions (mean/median). It's an approximation
-     (the gateway's tokenizer may differ; reasoning_content is not in `response`).
+     `query` (the full prompt sent that call) and the OUTPUT, where output =
+     `response` (visible content) + `reasoning_content` (the reasoning channel,
+     captured by the streaming patch). This yields true per-step distributions
+     (mean/median) and counts reasoning tokens that streaming `usage` drops. It's
+     an approximation (the gateway's tokenizer may differ); on trajectories made
+     before the reasoning-capture patch, `reasoning_content` is absent and counts 0.
 
 Usage:
     python scripts/token_usage.py glm-5.1            # name -> searches runs/
@@ -93,7 +96,7 @@ def analyze_run(rundir: str) -> dict:
     if not trajs:
         sys.exit(f"no .traj files under {rundir} (trajectories are gitignored — "
                  f"run must exist locally)")
-    in_steps, out_steps = [], []          # tokenized per-step counts
+    in_steps, out_steps, reason_steps = [], [], []   # tokenized per-step counts
     sent = recv = calls = 0               # gateway-reported totals
     n_tasks = 0
     per_task = []
@@ -107,20 +110,27 @@ def analyze_run(rundir: str) -> dict:
         sent += ms.get("tokens_sent", 0) or 0
         recv += ms.get("tokens_received", 0) or 0
         calls += ms.get("api_calls", 0) or 0
-        t_in, t_out, steps = 0, 0, 0
+        t_in, t_out, t_reason, steps = 0, 0, 0, 0
         for s in d.get("trajectory", []):
             qi = _query_tokens(s.get("query"))
             ro = ntok(s.get("response") or "") if isinstance(s.get("response"), str) else 0
+            # output now includes the reasoning channel (captured by the streaming
+            # patch); absent on older trajectories -> 0, so this stays backward-compatible.
+            rc = ntok(s.get("reasoning_content") or "") if isinstance(s.get("reasoning_content"), str) else 0
+            out = ro + rc
             in_steps.append(qi)
-            out_steps.append(ro)
+            out_steps.append(out)
+            reason_steps.append(rc)
             t_in += qi
-            t_out += ro
+            t_out += out
+            t_reason += rc
             steps += 1
         per_task.append({"id": os.path.basename(tp)[:-5], "steps": steps,
-                         "tok_in": t_in, "tok_out": t_out,
+                         "tok_in": t_in, "tok_out": t_out, "tok_reason": t_reason,
                          "sent": ms.get("tokens_sent", 0), "recv": ms.get("tokens_received", 0)})
     return {"slug": os.path.basename(rundir), "n_tasks": n_tasks,
             "n_steps": len(in_steps), "in_steps": in_steps, "out_steps": out_steps,
+            "reason_steps": reason_steps, "reason_total": sum(reason_steps),
             "sent": sent, "recv": recv, "calls": calls, "per_task": per_task}
 
 
@@ -139,8 +149,10 @@ def print_report(r: dict, per_task: bool):
     print(f"    input  (tokens_sent)     : {r['sent']:>12,}")
     print(f"    output (tokens_received) : {r['recv']:>12,}   (unreliable under streaming)")
     print(f"    api_calls                : {r['calls']:>12,}")
-    print(f"\n  tokenized per step ({TOKENIZER}):")
-    print(f"    total input  : {ti:>12,}     total output : {to:>12,}")
+    rt = r.get("reason_total", 0)
+    print(f"\n  tokenized per step ({TOKENIZER}):   [output = content + reasoning]")
+    print(f"    total input  : {ti:>12,}     total output : {to:>12,}"
+          + (f"   (incl. {rt:,} reasoning)" if rt else "   (no reasoning captured)"))
     print(f"    input  / step: mean {mi:8.1f}   median {mdi:8.1f}")
     print(f"    output / step: mean {mo:8.1f}   median {mdo:8.1f}")
     if per_task:
@@ -180,6 +192,7 @@ def main() -> int:
                         "gateway": {"tokens_sent": r["sent"], "tokens_received": r["recv"],
                                     "api_calls": r["calls"]},
                         "tokenized": {"total_input": ti, "total_output": to,
+                                      "total_reasoning": r.get("reason_total", 0),
                                       "input_per_step_mean": mi, "input_per_step_median": mdi,
                                       "output_per_step_mean": mo, "output_per_step_median": mdo}})
         print(json.dumps(out, indent=2))

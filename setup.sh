@@ -68,7 +68,7 @@ if [ "$(git -C "$SWE_SRC" rev-parse HEAD 2>/dev/null)" != "$SWE_AGENT_COMMIT" ];
 fi
 "$VPY" -m pip install -q -e "$SWE_SRC" || die "SWE-agent install failed"
 
-log "Applying streaming patch"
+log "Applying streaming + reasoning-capture patch"
 if grep -q "stream_chunk_builder" "$SWE_SRC/sweagent/agent/models.py" 2>/dev/null; then
   echo "already patched (skipping)"
 elif git -C "$SWE_SRC" apply "$REPO_ROOT/scripts/sweagent-streaming.patch" 2>/dev/null; then
