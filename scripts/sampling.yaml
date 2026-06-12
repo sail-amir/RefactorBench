@@ -22,8 +22,8 @@ default:
   temperature: 0.0      # SWE-agent / paper-faithful default (greedy-ish)
   top_p: 1.0
   stream: true          # gateway prefers streaming (reassembled transparently)
-  max_output_tokens: 20000   # per-request output cap (sent as max_tokens)
-  max_input_tokens: 110000   # context budget / accumulating-conversation guardrail
+  max_output_tokens: 32000   # per-request output cap (sent as max_tokens)
+  max_input_tokens: 100000   # context budget / accumulating-conversation guardrail
 
 claude:
   temperature: 1.0
