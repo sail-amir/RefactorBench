@@ -27,7 +27,7 @@ index 4844aeb..cbea664 100644
          )
          self.trajectory.append(trajectory_step)
 diff --git a/sweagent/agent/models.py b/sweagent/agent/models.py
-index 496b226..59fda26 100644
+index 496b226..b5abeac 100644
 --- a/sweagent/agent/models.py
 +++ b/sweagent/agent/models.py
 @@ -95,6 +95,10 @@ class GenericAPIModelConfig(PydanticBaseModel):
@@ -41,7 +41,7 @@ index 496b226..59fda26 100644
      convert_system_to_user: bool = False
      """Whether to convert system messages to user messages. This is useful for
      models that do not support system messages like o1.
-@@ -718,19 +722,45 @@ class LiteLLMModel(AbstractModel):
+@@ -718,19 +722,52 @@ class LiteLLMModel(AbstractModel):
          if "User-Agent" not in completion_kwargs["extra_headers"]:
              completion_kwargs["extra_headers"]["User-Agent"] = f"swe-agent/{__version__}"
  
@@ -85,12 +85,19 @@ index 496b226..59fda26 100644
 +                # Reasoning models stream a `reasoning_content` delta that
 +                # stream_chunk_builder drops; accumulate it ourselves so it can be
 +                # stored in the trajectory (observability + output-token accounting).
++                # litellm may expose it on the delta directly OR tuck it into
++                # provider_specific_fields, so check both.
 +                _rparts = []
 +                for _c in _chunks:
 +                    try:
-+                        _r = getattr(_c.choices[0].delta, "reasoning_content", None)
++                        _d = _c.choices[0].delta
 +                    except (IndexError, AttributeError):
-+                        _r = None
++                        continue
++                    _r = getattr(_d, "reasoning_content", None)
++                    if not _r:
++                        _psf = getattr(_d, "provider_specific_fields", None) or {}
++                        if isinstance(_psf, dict):
++                            _r = _psf.get("reasoning_content")
 +                    if _r:
 +                        _rparts.append(_r)
 +                _stream_reasoning = "".join(_rparts)
@@ -99,13 +106,19 @@ index 496b226..59fda26 100644
          except litellm.exceptions.ContextWindowExceededError as e:
              raise ContextWindowExceededError from e
          except litellm.exceptions.ContentPolicyViolationError as e:
-@@ -776,6 +806,13 @@ class LiteLLMModel(AbstractModel):
+@@ -776,6 +813,19 @@ class LiteLLMModel(AbstractModel):
                  and response.choices[i].message.thinking_blocks  # type: ignore
              ):
                  output_dict["thinking_blocks"] = response.choices[i].message.thinking_blocks  # type: ignore
 +            # Reasoning channel (openai-compatible gateways): prefer the field on
-+            # the reassembled message, else the text accumulated from stream chunks.
-+            _rc = getattr(response.choices[i].message, "reasoning_content", None)  # type: ignore
++            # the reassembled message (or its provider_specific_fields), else the
++            # text accumulated from the stream chunks above.
++            _msg = response.choices[i].message  # type: ignore
++            _rc = getattr(_msg, "reasoning_content", None)
++            if not _rc:
++                _psf = getattr(_msg, "provider_specific_fields", None) or {}
++                if isinstance(_psf, dict):
++                    _rc = _psf.get("reasoning_content")
 +            if not _rc and i == 0:
 +                _rc = _stream_reasoning
 +            if _rc:
