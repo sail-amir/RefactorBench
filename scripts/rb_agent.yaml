@@ -1,0 +1,78 @@
+# RefactorBench agent config — SWE-agent 1.1.0 format.
+#
+# Identical to SWE-agent's bundled config/default.yaml EXCEPT the prompt is
+# adapted for REFACTORING, following RefactorBench (Gautam et al., ICLR 2025,
+# Appendix B.1 "Updated SWE-agent System Prompt"):
+#   - the agent is framed as a refactoring specialist;
+#   - the "create a script to reproduce the error and run it" steps are REMOVED.
+#     These tasks are refactors, not bug fixes, so a "reproduction script" just
+#     ends up running the app/server (e.g. `FLASK_DEBUG=1 python ...`), which
+#     blocks forever and trips swe-rex's 30s command timeout (CommandTimeoutError);
+#   - the agent is told not to run the app or the test suite (the paper removes
+#     pytest/testing functionality "to prevent timeout issues with the large
+#     codebases").
+# Everything else — tool bundles, function calling, env vars, history — is
+# unchanged from default.yaml. Tool bundle paths resolve against the SWE-agent
+# repo root, so this file can live anywhere.
+agent:
+  templates:
+    system_template: |-
+      You are an autonomous programmer specializing in code refactoring. You interact with a computer through bash and file-editing tools to carry out multi-file refactoring tasks.
+    instance_template: |-
+      <uploaded_files>
+      {{working_dir}}
+      </uploaded_files>
+      I've uploaded a python code repository in the directory {{working_dir}}. Consider the following refactoring task:
+
+      <refactoring_task>
+      {{problem_statement}}
+      </refactoring_task>
+
+      Can you implement the necessary changes to the repository so that the requirements specified in the <refactoring_task> are met?
+      I've already taken care of all changes to any of the test files. This means you DON'T have to modify the testing logic or any of the tests in any way!
+      Your task is to make the minimal changes to non-test files in the {{working_dir}} directory to ensure the <refactoring_task> is satisfied.
+      Follow these steps to resolve it:
+      1. Find and read the code relevant to the <refactoring_task> using the search tools (e.g. grep, find). Refactors usually span several files, so trace every place the affected symbol/file is defined, imported, and used.
+      2. Edit the source files to perform the refactor, updating all references consistently across the repository.
+      3. Re-check that the change is applied everywhere it is needed and that no stale references to the old name/location remain.
+      These are refactoring tasks, not bug fixes: do NOT write or run reproduction scripts, do NOT run the application, and do NOT run the test suite — on these large codebases doing so tends to hang. Reason about correctness by reading the code.
+      When you are satisfied with your changes, run the submit command.
+      Your thinking should be thorough and so it's fine if it's very long.
+    next_step_template: |-
+      OBSERVATION:
+      {{observation}}
+    next_step_no_output_template: |-
+      Your command ran successfully and did not produce any output.
+  tools:
+    env_variables:
+      PAGER: cat
+      MANPAGER: cat
+      LESS: -R
+      PIP_PROGRESS_BAR: 'off'
+      TQDM_DISABLE: '1'
+      GIT_PAGER: cat
+    bundles:
+      - path: tools/registry
+      - path: tools/edit_anthropic
+      - path: tools/review_on_submit_m
+    registry_variables:
+      USE_FILEMAP: 'true'
+      SUBMIT_REVIEW_MESSAGES:
+        - |
+          Thank you for your work on this refactoring task. Please carefully review your changes before submitting:
+
+          1. If you modified any TEST files, revert them to their original state with `git checkout -- /path/to/test/file.py` (use the <diff> below to find them) — the tests are already taken care of.
+          2. Confirm the refactor is applied consistently: every definition, import, and usage of the affected symbol/file is updated, with no stale references left behind.
+          3. Run the submit command again to confirm.
+
+          Here is a list of all of your changes:
+
+          <diff>
+          {{diff}}
+          </diff>
+    enable_bash_tool: true
+    parse_function:
+      type: function_calling
+  history_processors:
+    - type: cache_control
+      last_n_messages: 2

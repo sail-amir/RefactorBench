@@ -138,6 +138,13 @@ first-attempt container retry shows as the informational note `slow_start`.
   `--score-checkout local`** (the bundled `repositories/`, same base the agent
   saw). Pass `--score-checkout fork` only if you want a fresh `dhruvji/*` clone
   and have network. Nothing in a run touches GitHub by default.
+- **Refactoring prompt (paper-faithful).** `run_model.py` passes
+  `--config scripts/rb_agent.yaml` by default — SWE-agent's `default.yaml` with the
+  prompt adapted for refactoring per RefactorBench App. B.1: the "create a
+  reproduction script and run it" steps are removed (these are refactors, not bug
+  fixes, so such scripts launch the app/server and hang on swe-rex's 30s command
+  timeout), and the agent is told not to run the app/tests. Pass `--agent-config ""`
+  to fall back to SWE-agent's stock bug-fixing prompt.
 - **Models:** presets are `claude | deepseek | glm | pangu`; variants are
   `base | descriptive | lazy`. Trajectories are saved per task under
   `runs/<slug>__<variant>/<id>/<id>.traj` (gitignored — local only).

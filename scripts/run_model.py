@@ -200,6 +200,12 @@ def build_cmd(a) -> list[str]:
         "--num_workers", str(a.workers),
         "--output_dir", a.outdir,
     ]
+    # Refactoring-tuned agent prompt (paper-faithful): no reproduction-script step,
+    # so the agent doesn't run the app/tests and hit swe-rex's 30s command timeout.
+    # Replaces SWE-agent's bug-fixing default.yaml; --agent-config "" uses the stock
+    # default instead.
+    if a.agent_config:
+        cmd += ["--config", a.agent_config]
     # Skip optional flags this SWE-agent build doesn't understand (version drift).
     probe = []
     if a.registry != "":
@@ -355,6 +361,10 @@ def main() -> int:
                     help="score against the bundled repositories/ (local, default, offline & "
                     "matches the baked agent repo) or a fresh dhruvji/* clone (fork, needs network)")
     ap.add_argument("--sweagent-bin", default="sweagent")
+    ap.add_argument("--agent-config",
+                    default=os.path.join(SCRIPTS_DIR, "rb_agent.yaml"),
+                    help="SWE-agent --config yaml (refactoring-tuned prompt, no "
+                    "reproduction-script step). Pass '' to use SWE-agent's stock default.yaml.")
     ap.add_argument("--registry", default=os.path.join(SCRIPTS_DIR, "litellm_registry.json"),
                     help="litellm model-registry json (capabilities/context); set '' to disable")
     ap.add_argument("--env-file", default=DEFAULT_ENV_FILE,
