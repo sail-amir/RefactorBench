@@ -5,19 +5,25 @@
 # are merged).
 #
 # How params are sent:
-#   - temperature, top_p, max_output_tokens  -> native SWE-agent flags
-#     (--agent.model.temperature / .top_p / .max_output_tokens)
+#   - temperature, top_p          -> native SWE-agent flags (--agent.model.*)
+#   - max_output_tokens           -> per-request output cap, sent as max_tokens via
+#     completion_kwargs (the registry's max_output_tokens is IGNORED for an
+#     openai-compatible gateway, so this is the only thing that actually caps output)
+#   - max_input_tokens            -> context budget (--agent.model.max_input_tokens)
 #   - top_k, min_p, repetition_penalty, frequency_penalty, presence_penalty,
 #     and anything under `extra_body:` -> forwarded verbatim to the gateway via
 #     litellm extra_body (use this for non-OpenAI-standard params like top_k).
 #   - reasoning_effort is added to extra_body by the --reasoning-effort flag.
 #
-# CLI flags (--temperature / --top-p / --top-k) override these per run.
+# Precedence: CLI flag (--temperature/--top-p/--top-k/--max-output-tokens/
+# --max-input-tokens/--stream) > model profile > `default` > built-in fallback.
 
 default:
   temperature: 0.0      # SWE-agent / paper-faithful default (greedy-ish)
   top_p: 1.0
   stream: true          # gateway prefers streaming (reassembled transparently)
+  max_output_tokens: 20000   # per-request output cap (sent as max_tokens)
+  max_input_tokens: 110000   # context budget / accumulating-conversation guardrail
 
 claude:
   temperature: 1.0
@@ -32,9 +38,12 @@ deepseek:
 glm:
   temperature: 0.6
   top_p: 0.95
+  # max_output_tokens: 32000   # raise if GLM-5-Gopi truncates (check the gateway's real cap)
 
 pangu:
   temperature: 1.0      # from your .pangu.env (PANGU_TEMPERATURE/TOP_P/TOP_K)
   top_p: 0.8
+  # stream: false            # pangu reasoning + streaming -> empty completions; try this
+  # max_output_tokens: 40000 # reasoning is token-hungry; raise if finish_reason=length
   extra_body:
     top_k: -1

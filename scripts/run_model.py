@@ -242,8 +242,12 @@ def build_cmd(a) -> list[str]:
 
 
 def resolve_sampling(a) -> None:
-    """Populate a.temperature/top_p/max_output_tokens/extra_body from the
-    per-model sampling profile (scripts/sampling.yaml), with CLI overrides."""
+    """Populate a.temperature/top_p/max_output_tokens/max_input_tokens/extra_body
+    from the per-model sampling profile (scripts/sampling.yaml), CLI overrides win.
+
+    These are all model-related request parameters, so sampling.yaml is their home.
+    max_input_tokens here only sets it when neither the CLI nor (later) the preset
+    provides one; the preset default is applied back in main()."""
     import yaml
     path = a.sampling_file or os.path.join(SCRIPTS_DIR, "sampling.yaml")
     allp = {}
@@ -262,6 +266,9 @@ def resolve_sampling(a) -> None:
     a.top_p = a.top_p if a.top_p is not None else prof.get("top_p")
     # Per-request output cap: CLI > sampling profile > 20000 default.
     a.max_output_tokens = a.max_output_tokens or prof.get("max_output_tokens") or 20000
+    # Context budget: CLI > sampling profile > (preset default, applied in main).
+    if not a.max_input_tokens and prof.get("max_input_tokens"):
+        a.max_input_tokens = prof["max_input_tokens"]
     a.stream = a.stream or bool(prof.get("stream"))
     if a.top_k is not None:
         extra["top_k"] = a.top_k
@@ -369,11 +376,12 @@ def main() -> int:
     a.cost = a.cost if a.cost is not None else preset.get("cost", 0.0)
     a.api_base = a.api_base or env("API_BASE") or os.environ.get("RB_API_BASE")
     a.api_key = a.api_key or env("API_KEY") or os.environ.get("RB_API_KEY")
-    if a.max_input_tokens == 0 and preset.get("max_input_tokens"):
-        a.max_input_tokens = preset["max_input_tokens"]
     if a.parse == "auto":
         a.parse = _auto_parse(a.model_name, a.api_base, a.api_key)
     resolve_sampling(a)
+    # max_input_tokens precedence: CLI > sampling profile > preset default.
+    if a.max_input_tokens == 0 and preset.get("max_input_tokens"):
+        a.max_input_tokens = preset["max_input_tokens"]
     slug = a.slug or preset.get("slug") or a.model_name.split("/")[-1]
     a.outdir = os.path.join(REPO_ROOT, "runs", f"{slug}__{a.variant}")
 
