@@ -132,9 +132,11 @@ def ensure_registry(a) -> str:
         except (json.JSONDecodeError, OSError):
             reg = {}
     if a.model_name not in reg:
+        # Capability/cost metadata only. Context + output caps live in sampling.yaml
+        # (max_input_tokens via --agent.model.max_input_tokens, output via
+        # completion_kwargs.max_tokens) — the registry's max_*_tokens is unused for
+        # an openai-compatible gateway, so we don't emit it here.
         reg[a.model_name] = {
-            "max_input_tokens": a.max_input_tokens or 131072,
-            "max_output_tokens": a.max_output_tokens or 20000,
             "input_cost_per_token": 0, "output_cost_per_token": 0,
             "litellm_provider": "openai", "mode": "chat",
             "supports_function_calling": True, "supports_tool_choice": True,
