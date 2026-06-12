@@ -4,8 +4,9 @@
 Reads the per-task trajectories (`<run_dir>/<task>/<task>.traj`) of one or two
 runs and draws ONE figure with two panels:
 
-  1. Distribution of the number of trajectory steps per task (overlaid
-     histograms; dashed lines mark medians).
+  1. Distribution of the number of trajectory steps per task (box plot by
+     default: box = quartiles, line = median, diamond = mean, with the raw
+     points jittered over it; use --dist hist for overlaid histograms).
   2. Count of each exit status (submitted, submitted (exit_format), exit_format,
      exit_cost, exit_api, exit_context, ...) as grouped bars.
 
@@ -29,6 +30,7 @@ import collections
 import glob
 import json
 import os
+import random
 import statistics
 import sys
 
@@ -71,26 +73,52 @@ def _is_failure(status: str) -> bool:
     return any(h in status for h in FAILURE_HINTS)
 
 
-def plot(runs, labels, out, bins=20, title=None):
+def plot(runs, labels, out, bins=20, dist="box", title=None):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.6),
                                    gridspec_kw={"width_ratios": [1, 1.25]})
 
-    # ---- panel 1: step-count distribution (shared bin edges) ----
-    allsteps = [s for r in runs for s in r["steps"]] or [0]
-    hi = max(allsteps)
-    edges = [i * hi / bins for i in range(bins + 1)] if hi else [0, 1]
-    for r, lab, c in zip(runs, labels, COLORS):
-        if not r["steps"]:
-            continue
-        med = statistics.median(r["steps"])
-        mean = statistics.mean(r["steps"])
-        ax1.hist(r["steps"], bins=edges, alpha=0.55, color=c, edgecolor="white",
-                 label=f"{lab}  (n={r['n']}, med {med:.0f}, mean {mean:.0f})")
-        ax1.axvline(med, color=c, ls="--", lw=1.3)
-    ax1.set_xlabel("trajectory steps")
-    ax1.set_ylabel("# tasks")
-    ax1.set_title("Step-count distribution")
-    ax1.legend(fontsize=8, framealpha=0.9)
+    # ---- panel 1: step-count distribution ----
+    if dist == "box":
+        data = [r["steps"] or [0] for r in runs]
+        pos = list(range(len(runs)))
+        bp = ax1.boxplot(data, positions=pos, widths=0.5, patch_artist=True,
+                         showmeans=True, meanprops=dict(marker="D", markersize=5,
+                         markerfacecolor="white", markeredgecolor="black"),
+                         medianprops=dict(color="black", lw=1.5),
+                         flierprops=dict(marker="o", markersize=3, alpha=0.5))
+        for patch, c in zip(bp["boxes"], COLORS):
+            patch.set_facecolor(c)
+            patch.set_alpha(0.5)
+        rng = random.Random(0)  # deterministic jitter for the overlaid points
+        for i, r in enumerate(runs):
+            xs = [i + (rng.random() - 0.5) * 0.28 for _ in r["steps"]]
+            ax1.scatter(xs, r["steps"], s=12, color=COLORS[i], alpha=0.6,
+                        edgecolor="white", linewidth=0.3, zorder=3)
+            if r["steps"]:
+                med = statistics.median(r["steps"])
+                ax1.annotate(f" med {med:.0f}", (i + 0.28, med), fontsize=8,
+                             va="center", color=COLORS[i])
+        ax1.set_xticks(pos)
+        ax1.set_xticklabels([f"{lab}\n(n={r['n']})" for lab, r in zip(labels, runs)],
+                            fontsize=9)
+        ax1.set_ylabel("trajectory steps")
+        ax1.set_title("Step-count distribution  (box = quartiles, ♦ = mean)")
+    else:
+        allsteps = [s for r in runs for s in r["steps"]] or [0]
+        hi = max(allsteps)
+        edges = [i * hi / bins for i in range(bins + 1)] if hi else [0, 1]
+        for r, lab, c in zip(runs, labels, COLORS):
+            if not r["steps"]:
+                continue
+            med = statistics.median(r["steps"])
+            mean = statistics.mean(r["steps"])
+            ax1.hist(r["steps"], bins=edges, alpha=0.55, color=c, edgecolor="white",
+                     label=f"{lab}  (n={r['n']}, med {med:.0f}, mean {mean:.0f})")
+            ax1.axvline(med, color=c, ls="--", lw=1.3)
+        ax1.set_xlabel("trajectory steps")
+        ax1.set_ylabel("# tasks")
+        ax1.set_title("Step-count distribution")
+        ax1.legend(fontsize=8, framealpha=0.9)
     ax1.grid(axis="y", ls=":", alpha=0.4)
     ax1.set_axisbelow(True)
 
@@ -156,7 +184,9 @@ def main() -> int:
     ap.add_argument("--labels", nargs=2, metavar=("A", "B"),
                     help="labels for the runs (default: their slugs)")
     ap.add_argument("--out", help="output png (default <result_dir>/run_health.png)")
-    ap.add_argument("--bins", type=int, default=20, help="histogram bins (default 20)")
+    ap.add_argument("--dist", choices=["box", "hist"], default="box",
+                    help="panel-1 style for the step distribution (default box)")
+    ap.add_argument("--bins", type=int, default=20, help="hist bins (--dist hist; default 20)")
     ap.add_argument("--title", help="override figure title")
     a = ap.parse_args()
 
@@ -169,7 +199,7 @@ def main() -> int:
         _print_summary(r, lab)
 
     out = a.out or os.path.join(runs[0]["dir"], "run_health.png")
-    plot(runs, labels, out, bins=a.bins, title=a.title)
+    plot(runs, labels, out, bins=a.bins, dist=a.dist, title=a.title)
     return 0
 
 
