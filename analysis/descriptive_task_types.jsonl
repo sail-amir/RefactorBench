@@ -1,0 +1,100 @@
+{"id": "add-log-parameter-get-group-vars-task", "repo": "ansible_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_group_vars; update call sites to pass log=False"}
+{"id": "add-log-parameter-is-systemd-managed-task", "repo": "ansible_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to is_systemd_managed; update calls to pass log=True"}
+{"id": "combine-namespace-compat-task", "repo": "ansible_refactor", "types": ["Inline / Merge Module"], "evidence": "Transfer all classes from namespace.py into compat.py and repoint references"}
+{"id": "data-to-inventory-data-task", "repo": "ansible_refactor", "types": ["Rename File/Module"], "evidence": "Rename file data.py -> inventory_data.py and fix all imports"}
+{"id": "move-quoting-splitter-task", "repo": "ansible_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Move all of quoting.py into splitter.py and delete quoting.py"}
+{"id": "new-inventory-patterns-task", "repo": "ansible_refactor", "types": ["Move Function"], "evidence": "Relocate order_patterns/split_host_pattern from manager.py to new patterns.py"}
+{"id": "new-utils-class-connection-task", "repo": "ansible_refactor", "types": ["Combine Functions into Class"], "evidence": "Wrap standalone connection.py functions into new ConnectionUtils class"}
+{"id": "new-utils-from-basic-task", "repo": "ansible_refactor", "types": ["Move Function"], "evidence": "Move heuristic_log_sanitize/missing_required_lib from basic.py to new utils.py"}
+{"id": "parse_key_value-task", "repo": "ansible_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function parse_kv -> parse_key_value across repo"}
+{"id": "rename-lenient-lowercase-task", "repo": "ansible_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function lenient_lowercase -> lowercase_of_list (test file renamed to match)"}
+{"id": "sort-groups-to-group-sort-task", "repo": "ansible_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function sort_groups -> group_sort across repo"}
+{"id": "add-log-parameter-get-digest-algorithm-task", "repo": "celery_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_digest_algorithm"}
+{"id": "add-log-parameter-node-format-task", "repo": "celery_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to node_format"}
+{"id": "annotation-utils-task", "repo": "celery_refactor", "types": ["Move Function"], "evidence": "Move resolve_all from annotations.py to new annotations_utils.py"}
+{"id": "autoretry-to-retry-task", "repo": "celery_refactor", "types": ["Rename File/Module"], "evidence": "Rename file autoretry.py -> retry.py (and matching docs)"}
+{"id": "combine-unpickle-task-task", "repo": "celery_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Merge _unpickle_task_v2 into _unpickle_task and remove _unpickle_task_v2 (function-level inline)"}
+{"id": "dump-message-to-serialization-task", "repo": "celery_refactor", "types": ["Move Function"], "evidence": "Move dump_message from bin/amqp.py to utils/serialization.py"}
+{"id": "ensure_serialize-task", "repo": "celery_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function ensure_serializable -> ensure_serialize"}
+{"id": "evaluate-promises-to-serialization-task", "repo": "celery_refactor", "types": ["Move Function"], "evidence": "Move evaluate_promises from functional.py to serialization.py"}
+{"id": "expand-router-string-to-utils-task", "repo": "celery_refactor", "types": ["Move Function"], "evidence": "Move expand_router_string into celery/app/utils.py"}
+{"id": "object-mro-lookup-task", "repo": "celery_refactor", "types": ["Inline / Merge Module"], "evidence": "Change test import of mro_lookup to come directly from canonical source (remove indirection)"}
+{"id": "rename-host-format-task", "repo": "celery_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function host_format -> format_host"}
+{"id": "truncate-text-task", "repo": "celery_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function truncate -> truncate_text"}
+{"id": "add-log-parameter-constant-time-compare-task", "repo": "django_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to constant_time_compare"}
+{"id": "add-log-parameter-get-resolver-task", "repo": "django_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add 'logging' param to get_resolver"}
+{"id": "add-log-parameter-resolve-error-handler-task", "repo": "django_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to resolve_error_handler method"}
+{"id": "add-none-handling-duration-string-task", "repo": "django_refactor", "types": ["Other / Non-structural"], "evidence": "Add None-handling logic to duration_string + a new test; behavior change, not a structural Fowler refactor"}
+{"id": "combine-utils-dates-dateformat-task", "repo": "django_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Migrate dates.py contents into dateformat.py and delete dates.py"}
+{"id": "combine-utils-hashable-itercompat-task", "repo": "django_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Combine hashable.py + itercompat.py into new able.py and delete both originals"}
+{"id": "new-converter-to-python-class-task", "repo": "django_refactor", "types": ["Combine Functions into Class"], "evidence": "Group typecast_date/time/timestamp into new ConverterToPython class"}
+{"id": "new-path-traversal-exception-task", "repo": "django_refactor", "types": ["Extract Class"], "evidence": "Introduce new PathTraversal exception class (subclass of SuspiciousOperation) and raise it"}
+{"id": "new-reference-context-graph-class-task", "repo": "django_refactor", "types": ["Introduce Parameter Object"], "evidence": "New ReferenceContext class encapsulating add_dependency parameters"}
+{"id": "new-reference-context-field-class-task", "repo": "django_refactor", "types": ["Introduce Parameter Object"], "evidence": "New ReferenceContext class encapsulating field_references parameters"}
+{"id": "new-timezone-class-task", "repo": "django_refactor", "types": ["Combine Functions into Class"], "evidence": "Wrap from_current_timezone/to_current_timezone functions into a new class"}
+{"id": "new-utils-adapt-method-mode-task", "repo": "django_refactor", "types": ["Move Function"], "evidence": "Move adapt_method_mode from base.py to new handler_utils.py"}
+{"id": "new-utils-check-response-task", "repo": "django_refactor", "types": ["Move Function"], "evidence": "Extract check_response out of a class into new handler_utils.py as a function"}
+{"id": "new-utils-path-from-module-task", "repo": "django_refactor", "types": ["Move Function"], "evidence": "Move _path_from_module from config.py to new apps_utils.py"}
+{"id": "remove-core-cache-utils-task", "repo": "django_refactor", "types": ["Move Function", "Remove Dead Code"], "evidence": "Move make_template_fragment_key to cache.py and delete core/cache/utils.py"}
+{"id": "remove-db-models-constants-task", "repo": "django_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Transfer all of constants.py into base.py and repoint imports (constants removed)"}
+{"id": "rename-file-move-safe-task", "repo": "django_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function file_move_safe -> safe_file_move"}
+{"id": "split-parse-apps-and-model-labels-task", "repo": "django_refactor", "types": ["Split Function/Phase"], "evidence": "Split parse_apps_and_model_labels into get_apps_from_labels + get_models_from_labels"}
+{"id": "add-log-parameter-generate-option-id-for-path-task", "repo": "fastapi_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to generate_operation_id_for_path"}
+{"id": "exception-handlers-to-handlers-task", "repo": "fastapi_refactor", "types": ["Rename File/Module"], "evidence": "Rename file exception_handlers.py -> handlers.py"}
+{"id": "get-auth-scheme-param-task", "repo": "fastapi_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function get_authorization_scheme_param -> get_auth_scheme_param"}
+{"id": "openapi-get-utils-task", "repo": "fastapi_refactor", "types": ["Rename File/Module"], "evidence": "Rename file openapi/utils.py -> get_utils.py"}
+{"id": "params-to-param-task", "repo": "fastapi_refactor", "types": ["Rename File/Module"], "evidence": "Rename file params.py -> param.py"}
+{"id": "value-is-a-sequence-task", "repo": "fastapi_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function value_is_sequence -> value_is_a_sequence"}
+{"id": "add-log-parameter-get-debug-flag-task", "repo": "flask_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_debug_flag (+ import logging)"}
+{"id": "add-log-parameter-get-flashed-messages-task", "repo": "flask_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_flashed_messages"}
+{"id": "debughelpers-to-helpers.py-task", "repo": "flask_refactor", "types": ["Move Function"], "evidence": "Move all standalone functions from debughelpers.py to helpers.py"}
+{"id": "rename-send-from-directory-task", "repo": "flask_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function send_from_directory -> send_from_directory_helper (alias kept)"}
+{"id": "render-template-str-task", "repo": "flask_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function render_template_string -> render_template_str"}
+{"id": "stream-template-str-task", "repo": "flask_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function stream_template_string -> stream_template_str (alias kept)"}
+{"id": "add-log-parameter-get-encoding-from-headers-task", "repo": "requests_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_encoding_from_headers"}
+{"id": "add-log-parameter-resolve-proxies-task", "repo": "requests_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to resolve_proxies"}
+{"id": "add-log-parameter-select-proxy-task", "repo": "requests_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add 'log' param to select_proxy"}
+{"id": "combine-from-key-to-key-task", "repo": "requests_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Merge from_key_val_list + to_key_val_list into one key_val_convert(to_dict); old two removed (function-level combine)"}
+{"id": "combine-internal-utils-utils-task", "repo": "requests_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Transfer _internal_utils.py contents into utils.py and delete _internal_utils.py"}
+{"id": "move-hooks-sessions-task", "repo": "requests_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Integrate hooks.py contents into sessions.py and remove hooks.py"}
+{"id": "new-cookie-utils-class-task", "repo": "requests_refactor", "types": ["Combine Functions into Class"], "evidence": "Wrap cookie helper functions into new CookieUtils class"}
+{"id": "rename-lookup-dict-dict-lookup-task", "repo": "requests_refactor", "types": ["Rename Class"], "evidence": "Rename class LookupDict -> DictLookup"}
+{"id": "rename-super-len-complex-len-task", "repo": "requests_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function super_len -> complex_len"}
+{"id": "split-warnings-exceptions-task", "repo": "requests_refactor", "types": ["Move Class"], "evidence": "Move warning classes out of exceptions.py into new warnings.py (split module by relocating classes)"}
+{"id": "add-log-parameter-delete-directory-task", "repo": "salt_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to delete_directory"}
+{"id": "add-log-parameter-get-capability-definitions-task", "repo": "salt_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to get_capability_definitions"}
+{"id": "add-log-parameter-recursive-diff-task", "repo": "salt_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to recursive_diff"}
+{"id": "cant-create-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename constant EX_CANTCREAT -> EX_CANTCREATE (fix misspelling)"}
+{"id": "channel-to-transport-task", "repo": "salt_refactor", "types": ["Rename File/Module"], "evidence": "Rename file channel.py -> transport.py"}
+{"id": "ex-pillar-fail-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename constant EX_PILLAR_FAILURE -> EX_PILLAR_FAIL"}
+{"id": "ex-state-fail-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename constant EX_STATE_FAILURE -> EX_STATE_FAIL"}
+{"id": "exactly-n-boto-mod-task", "repo": "salt_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Remove local exactly_n/exactly_1 defs in boto3mod.py; import from canonical botomod.py"}
+{"id": "get-unavail-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename constant EX_UNAVAILABLE -> EX_UNAVAIL"}
+{"id": "iam-to-aws-task", "repo": "salt_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Transfer all of iam.py into aws.py and delete iam.py"}
+{"id": "mksls-to-specific-task", "repo": "salt_refactor", "types": ["Rename Function/Method"], "evidence": "Rename function mksls -> preseed_to_sls/kickstart_to_sls/autoyast_to_sls per file"}
+{"id": "namecheap-xmlutil-task", "repo": "salt_refactor", "types": ["Move Function"], "evidence": "Move xml_to_dict/atts_to_dict/string_to_value from namecheap.py to xmlutil.py"}
+{"id": "paged-call-boto-mod-task", "repo": "salt_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Replace boto3mod.paged_call body with import of canonical paged_call from botomod.py"}
+{"id": "pem-fingerprint-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename attribute pem_finger -> pem_fingerprint across files"}
+{"id": "perm-denied-task", "repo": "salt_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename constant EX_NOPERM -> EX_PERM_DENIED"}
+{"id": "add-log-parameter-disconnect-all-task", "repo": "scrapy_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to disconnect_all"}
+{"id": "add-log-parameter-job-dir-task", "repo": "scrapy_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to job_dir"}
+{"id": "add-log-parameter-xmliter-task", "repo": "scrapy_refactor", "types": ["Add Parameter (Change Fn Declaration)"], "evidence": "Add boolean 'log' param to xmliter"}
+{"id": "genspider-functions-to-utils-url-task", "repo": "scrapy_refactor", "types": ["Move Function"], "evidence": "Move verify_url_scheme/sanitize_module_name/extract_domain from genspider.py to utils/url.py"}
+{"id": "new-downloadermiddlewares-utils-task", "repo": "scrapy_refactor", "types": ["Move Function"], "evidence": "Move get_status_size/get_header_size out of a class in stats.py to new utils file"}
+{"id": "new-spider-utils-in-spiders-task", "repo": "scrapy_refactor", "types": ["Move Function"], "evidence": "Move global-level functions from sitemap.py/crawl.py into new spider_utils.py"}
+{"id": "new-verify-reactor-class-task", "repo": "scrapy_refactor", "types": ["Combine Functions into Class"], "evidence": "Wrap verify_installed/is_asyncio_reactor_installed into new VerifyReactor class"}
+{"id": "not-supported-exception-to-unsupported-task", "repo": "scrapy_refactor", "types": ["Rename Class"], "evidence": "Replace NotSupported exception class with Unsupported across repo"}
+{"id": "parameterize-gunzip-task", "repo": "scrapy_refactor", "types": ["Introduce Parameter Object"], "evidence": "Introduce GunzipParams class; gunzip takes a GunzipParams object"}
+{"id": "rename-description-commands-task", "repo": "scrapy_refactor", "types": ["Rename Variable/Constant/Attribute"], "evidence": "Rename class attributes short_desc/long_desc -> short_description/long_description"}
+{"id": "rename-engine-status-task", "repo": "scrapy_refactor", "types": ["Rename Function/Method"], "evidence": "Rename get_engine_status etc. -> _get_engine_status (underscore prefix)"}
+{"id": "rename-processtest-testproc-task", "repo": "scrapy_refactor", "types": ["Rename Class"], "evidence": "Rename class ProcessTest -> TestProc"}
+{"id": "sitemap-url-to-url-task", "repo": "scrapy_refactor", "types": ["Move Function"], "evidence": "Move sitemap_urls_from_robots from spiders/sitemap.py to utils/url.py"}
+{"id": "global-objects-task", "repo": "tornado_refactor", "types": ["Move Function"], "evidence": "Move module-level dummy_executor definition to new _globals.py (centralize object def)"}
+{"id": "log-utils-task", "repo": "tornado_refactor", "types": ["Move Function"], "evidence": "Move enable_pretty_logging/define_logging_options from log.py to new global_log_options.py"}
+{"id": "option-parser-with-pretty-print-task", "repo": "tornado_refactor", "types": ["Move Function"], "evidence": "Move enable_pretty_logging from log.py into the OptionParser class in options.py"}
+{"id": "options-utils-task", "repo": "tornado_refactor", "types": ["Move Function"], "evidence": "Move all independent functions from options.py to new global_options.py"}
+{"id": "remove-locale-data-task", "repo": "tornado_refactor", "types": ["Inline / Merge Module", "Remove Dead Code"], "evidence": "Inline LOCALE_NAMES into locale.py and delete _locale_data.py"}
+{"id": "rename-http1connection-task", "repo": "tornado_refactor", "types": ["Rename Class"], "evidence": "Rename class HTTP1Connection -> HTTP1xConnection"}
+{"id": "rename-to-camel-case-task", "repo": "tornado_refactor", "types": ["Rename Function/Method"], "evidence": "Rename method get_new_ioloop -> getNewIoLoop"}
+{"id": "resolvers-as-separate-task", "repo": "tornado_refactor", "types": ["Move Class"], "evidence": "Move Resolver class + subclasses from netutil to new resolver.py"}
+{"id": "tcpclient-connect-params-task", "repo": "tornado_refactor", "types": ["Introduce Parameter Object"], "evidence": "Introduce TCPClientConfig dataclass to encapsulate TCPClient.connect() params"}
