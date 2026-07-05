@@ -34,17 +34,29 @@ bash setup.sh
 
 Idempotent. It:
 - creates `.venv` and installs **SWE-agent v1.1.0** (+ streaming/reasoning-capture patch),
-- builds the **`rb-swerex:py311`** Docker image with the **vendored `repositories/`
+- installs **Mini-SWE-Agent** for the bash-only backend,
+- builds the **`rb-swerex:py311-tree-sitter`** Docker image with the **vendored `repositories/`
   baked in** (each at `/<repo>`, as a fresh git repo) so tasks need **no GitHub
   access** — see "Offline mode" below,
 - generates the base/lazy instance yamls and a 1-task `smoke_instances.yaml`,
 - copies `scripts/models.env.example → scripts/models.env`,
 - writes `scripts/env.sh`.
 
-> The image build skips if `rb-swerex:py311` already exists — run
-> `docker rmi rb-swerex:py311 && bash setup.sh` to rebuild with the baked repos.
+> The image build skips if `rb-swerex:py311-tree-sitter` already exists — run
+> `docker rmi rb-swerex:py311-tree-sitter && bash setup.sh` to rebuild with the baked repos.
 
-Override defaults via env vars, e.g. `SWE_AGENT_REF=main IMAGE=rb-swerex:py311 bash setup.sh`.
+Override defaults via env vars, e.g. `SWE_AGENT_COMMIT=<sha> IMAGE=rb-swerex:py311-tree-sitter bash setup.sh`.
+
+If the machine is already bootstrapped and you only need to add/verify the
+Mini-SWE-Agent backend, use the lighter helper instead:
+
+```bash
+bash setup_mini.sh
+```
+
+It installs the pinned Mini-SWE-Agent package into `.venv`, verifies the Mini
+imports used by `scripts/run_mini_model.py`, checks the Docker image has
+tree-sitter packages, and ensures `scripts/smoke_instances.yaml` exists.
 
 ### 3. Fill in gateway credentials
 
@@ -82,26 +94,48 @@ It probes the gateway (resolving the same `models.env` config) for: basic chat
 with `--thinking` — a `reasoning_content` channel. Exit 0 = healthy. Use
 `--model claude|glm|pangu` or `--model-name openai/<name>` for others.
 
-### 5. Smoke test (1 flask task)
+### 5. SWE-agent smoke test (`add-log-parameter-get-debug-flag-task`)
 
 ```bash
 python scripts/run_model.py --model deepseek --variant descriptive \
   --instances scripts/smoke_instances.yaml --slug smoke \
-  --image rb-swerex:py311 --startup-timeout 1200 --workers 1
+  --image rb-swerex:py311-tree-sitter --startup-timeout 1200 --workers 1
 ```
 
-### 6. Full run + report
+### 6. Mini-SWE-Agent smoke test (`add-log-parameter-get-debug-flag-task`)
+
+Use this backend for models trained on Mini-SWE-Agent bash trajectories:
+
+```bash
+python scripts/run_mini_model.py --model deepseek --variant descriptive \
+  --instances scripts/smoke_instances.yaml --slug mini-smoke \
+  --image rb-swerex:py311-tree-sitter \
+  --startup-timeout 1200 --command-timeout 30 --workers 1
+```
+
+Both backends write `runs/<slug>__<variant>/preds.json` and use the same
+`scripts/score.py`.
+
+### 7. Full run + report
 
 ```bash
 # one model × one variant (100 tasks)
 python scripts/run_model.py --model deepseek --variant descriptive \
-  --image rb-swerex:py311 --startup-timeout 1200 --workers 4
+  --image rb-swerex:py311-tree-sitter --startup-timeout 1200 --workers 4
+
+# same model through Mini-SWE-Agent
+python scripts/run_mini_model.py --model deepseek --variant descriptive \
+  --image rb-swerex:py311-tree-sitter \
+  --startup-timeout 1200 --command-timeout 30 --workers 4
 
 # cross-model / cross-variant grid
 python scripts/report.py runs/*/scores.json
+
+# pass rate + loop/control metrics
+python scripts/compare_agent_control.py runs/*/scores.json
 ```
 
-### 7. Inspect a run (status + health)
+### 8. Inspect a run (status + health)
 
 After a smoke or full run, get a per-task status/health report:
 
@@ -132,7 +166,7 @@ first-attempt container retry shows as the informational note `slow_start`.
   slower but typically higher quality.
 - **Offline mode (no GitHub access).** The instance yamls use the
   `preexisting` repo type with `reset: false`, pointing at the repos **baked into
-  the image** at `/<repo>` — so SWE-agent never clones or `git fetch`es from
+  the image** at `/<repo>` — so the agent never clones or `git fetch`es from
   GitHub (this avoids the per-task `Connection timed out` failures on
   restricted-network hosts). Scoring matches: **`run_model.py` defaults to
   `--score-checkout local`** (the bundled `repositories/`, same base the agent
@@ -145,6 +179,12 @@ first-attempt container retry shows as the informational note `slow_start`.
   fixes, so such scripts launch the app/server and hang on swe-rex's 30s command
   timeout), and the agent is told not to run the app/tests. Pass `--agent-config ""`
   to fall back to SWE-agent's stock bug-fixing prompt.
+- **Mini-SWE-Agent backend.** `run_mini_model.py` uses `scripts/rb_mini_agent.yaml`,
+  a bash-only prompt with no SWE-agent edit-tool wording. It stops on
+  `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, then the runner extracts the patch
+  from git state with `git add -A -- . && git diff --cached --binary -- .` so
+  newly created files are included. The built-in score step passes `--only` for
+  the actually-run instances, so smoke/subset denominators are correct.
 - **Models:** presets are `claude | deepseek | glm | pangu`; variants are
   `base | descriptive | lazy`. Trajectories are saved per task under
   `runs/<slug>__<variant>/<id>/<id>.traj` (gitignored — local only).

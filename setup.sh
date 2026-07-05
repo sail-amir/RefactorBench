@@ -3,6 +3,7 @@
 #
 # Bootstraps everything needed to run agents on RefactorBench on a fresh machine:
 #   - a Python venv with SWE-agent (the streaming patch applied)
+#   - Mini-SWE-Agent for the bash-only backend
 #   - the rb-swerex Docker image (swe-rex preinstalled, so containers start fast)
 #   - the base/lazy SWE-agent batch yamls
 #   - scripts/models.env (from the template) + scripts/env.sh helper
@@ -14,7 +15,7 @@
 #
 # Usage:   bash setup.sh
 # Re-runnable (idempotent). Override defaults via env vars, e.g.:
-#   SWE_AGENT_COMMIT=<sha> IMAGE=rb-swerex:py311 bash setup.sh
+#   SWE_AGENT_COMMIT=<sha> IMAGE=rb-swerex:py311-tree-sitter bash setup.sh
 
 set -uo pipefail
 
@@ -67,6 +68,9 @@ if [ "$(git -C "$SWE_SRC" rev-parse HEAD 2>/dev/null)" != "$SWE_AGENT_COMMIT" ];
   git -C "$SWE_SRC" checkout -q -f FETCH_HEAD || die "could not checkout pinned commit"
 fi
 "$VPY" -m pip install -q -e "$SWE_SRC" || die "SWE-agent install failed"
+
+log "Installing Mini-SWE-Agent"
+"$VPY" -m pip install -q mini-swe-agent==2.4.4 || die "Mini-SWE-Agent install failed"
 
 log "Applying streaming + reasoning-capture patch"
 if grep -q "stream_chunk_builder" "$SWE_SRC/sweagent/agent/models.py" 2>/dev/null; then
@@ -143,7 +147,7 @@ import yaml
 d=yaml.safe_load(open("scripts/descriptive_instances.yaml"))
 one=[next(x for x in d if x["problem_statement"]["id"]=="add-log-parameter-get-debug-flag-task")]
 yaml.safe_dump(one, open("scripts/smoke_instances.yaml","w"), sort_keys=False, width=10**9)
-print("wrote scripts/smoke_instances.yaml (1 flask task)")
+print("wrote scripts/smoke_instances.yaml (add-log-parameter-get-debug-flag-task)")
 PY
 
 # --- 7. model config ---------------------------------------------------------
@@ -177,6 +181,12 @@ Next steps:
        python scripts/run_model.py --model deepseek --variant descriptive \\
          --image $IMAGE --startup-timeout 1200 --parse thought_action --workers 4
   5) Compare:  python scripts/report.py runs/*/scores.json
+  6) Mini backend smoke (same scorer, bash-only agent):
+       python scripts/run_mini_model.py --model deepseek --variant descriptive \\
+         --instances scripts/smoke_instances.yaml --slug mini-smoke \\
+         --image $IMAGE --startup-timeout 1200 --command-timeout 30 \\
+         --workers 1
+  7) Control metrics:  python scripts/compare_agent_control.py runs/*/scores.json
 
 Notes:
   - --startup-timeout high helps on loaded hosts (container start can be slow).

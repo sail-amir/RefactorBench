@@ -337,7 +337,7 @@ def main() -> int:
     ap.add_argument("--per-instance-call-limit", type=int, default=0)
     ap.add_argument("--instances", help="custom instances yaml (e.g. smoke subset)")
     ap.add_argument("--image", help="override env.deployment.image for all instances "
-                    "(e.g. rb-swerex:py311 with swe-rex preinstalled)")
+                    "(e.g. rb-swerex:py311-tree-sitter with swe-rex preinstalled)")
     ap.add_argument("--startup-timeout", type=float,
                     help="override env.deployment.startup_timeout seconds (default 180; "
                     "raise it when the host is heavily loaded)")

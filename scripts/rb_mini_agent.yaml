@@ -1,0 +1,99 @@
+# RefactorBench Mini-SWE-Agent config.
+#
+# This is intentionally bash-only. The model should interact through Mini's
+# text action format, not SWE-agent-specific edit tools.
+agent:
+  system_template: |-
+    You are an autonomous programmer specializing in code refactoring. You interact with a computer through bash commands to carry out multi-file refactoring tasks.
+
+    Every response must contain exactly one action enclosed in a triple-backtick code block tagged mswea_bash_command. Include a THOUGHT section before the action.
+
+    Example:
+    THOUGHT: I need to inspect the relevant source file.
+    ```mswea_bash_command
+    sed -n '1,200p' path/to/file.py
+    ```
+  instance_template: |-
+    <uploaded_files>
+    {{cwd}}
+    </uploaded_files>
+
+    A Python code repository is already checked out in {{cwd}}. Consider the following refactoring task:
+
+    <refactoring_task>
+    {{task}}
+    </refactoring_task>
+
+    Implement the minimal source changes needed so the requirements in the refactoring task are met.
+
+    Important rules:
+    1. These are refactoring tasks, not bug fixes. Do not write or run reproduction scripts.
+    2. Do not run the application, start servers, or run the full test suite. On these large codebases, those commands can hang.
+    3. Do not edit tests unless the refactoring task explicitly asks for test edits.
+    4. Search and inspect the code with commands such as rg, grep, find, sed, and nl.
+    5. Update definitions, imports, and usages consistently. Check that no stale references remain.
+    6. If you need to edit files, use shell commands such as python one-liners, perl, sed, or here-documents carefully.
+    7. When satisfied, finish by issuing exactly this command and nothing else:
+
+    ```mswea_bash_command
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+    ```
+
+    The completion marker must be the first output line of the command. After this command, you cannot continue working on the task.
+  step_limit: 0
+  cost_limit: 0.0
+  wall_time_limit_seconds: 0
+  max_consecutive_format_errors: 3
+
+model:
+  observation_template: |-
+    {% if output.exception_info -%}
+    {{output.exception_info}}
+    {% endif -%}
+    {{output.returncode}}
+    {% if output.output | length < 10000 -%}
+
+    {{ output.output -}}
+    {%- else -%}
+
+    The output of your last command was too long. Use a narrower command.
+
+    {%- set elided_chars = output.output | length - 10000 -%}
+    {{ output.output[:5000] }}
+    {{ elided_chars }} characters elided
+    {{ output.output[-5000:] }}
+    {%- endif %}
+  model_kwargs:
+    drop_params: true
+  cost_tracking: ignore_errors
+  action_regex: |-
+    ```mswea_bash_command\s*\n(.*?)\n```
+  format_error_template: |-
+    {% if finish_reason is defined and finish_reason in ["length", "tool_calls"] -%}
+    Your previous response reached the output token limit before producing a complete action. Respond more concisely and provide exactly one action.
+    {%- else -%}
+    Format error: {{error}}
+    {%- endif %}
+
+    Always provide exactly one action in this format:
+
+    THOUGHT: Briefly explain the next step.
+    ```mswea_bash_command
+    command_here
+    ```
+
+    To finish, issue exactly:
+
+    ```mswea_bash_command
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+    ```
+
+environment:
+  env:
+    PAGER: cat
+    MANPAGER: cat
+    LESS: -R
+    PIP_PROGRESS_BAR: 'off'
+    TQDM_DISABLE: '1'
+    GIT_PAGER: cat
+    PYTHONSAFEPATH: '1'
