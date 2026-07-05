@@ -7,7 +7,7 @@
     "supports_function_calling": true,
     "supports_tool_choice": true
   },
-  "openai/glm-5.1": {
+  "openai/GLM-5-Gopi": {
     "input_cost_per_token": 0,
     "output_cost_per_token": 0,
     "litellm_provider": "openai",
@@ -15,7 +15,39 @@
     "supports_function_calling": true,
     "supports_tool_choice": true
   },
-  "openai/pangu_auto": {
+  "openai/pangu35b": {
+    "input_cost_per_token": 0,
+    "output_cost_per_token": 0,
+    "litellm_provider": "openai",
+    "mode": "chat",
+    "supports_function_calling": true,
+    "supports_tool_choice": true
+  },
+  "openai/pangu-7b-code-nocode": {
+    "input_cost_per_token": 0,
+    "output_cost_per_token": 0,
+    "litellm_provider": "openai",
+    "mode": "chat",
+    "supports_function_calling": true,
+    "supports_tool_choice": true
+  }, 
+  "openai/pangu-7b-code-nocode-del": {
+    "input_cost_per_token": 0,
+    "output_cost_per_token": 0,
+    "litellm_provider": "openai",
+    "mode": "chat",
+    "supports_function_calling": true,
+    "supports_tool_choice": true
+  },  
+  "openai/pangu-7b-code-nocode-3k-multi-turn-del": {
+    "input_cost_per_token": 0,
+    "output_cost_per_token": 0,
+    "litellm_provider": "openai",
+    "mode": "chat",
+    "supports_function_calling": true,
+    "supports_tool_choice": true
+  },
+  "openai/pangu-7b-code-nocode-13k-single-multi-turn-del": {
     "input_cost_per_token": 0,
     "output_cost_per_token": 0,
     "litellm_provider": "openai",

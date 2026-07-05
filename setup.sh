@@ -27,7 +27,7 @@ SWE_SRC="${SWE_SRC:-$REPO_ROOT/.swe-agent-src}"
 # has --agent.model.litellm_model_registry and accepts the streaming patch (the
 # v1.1.0 release dropped both). Override with SWE_AGENT_COMMIT=... if needed.
 SWE_AGENT_COMMIT="${SWE_AGENT_COMMIT:-a3d018f345241f5a3e1c4c3168289e6a3f81acad}"
-IMAGE="${IMAGE:-rb-swerex:py311}"
+IMAGE="${IMAGE:-rb-swerex:py311-tree-sitter}"
 
 log(){ printf '\n\033[1m=== %s ===\033[0m\n' "$*"; }
 die(){ printf '\033[31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
@@ -111,7 +111,7 @@ if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     cat > "$_dockerfile" <<'DOCKERFILE'
 FROM python:3.11
 ENV PYTHONSAFEPATH=1
-RUN pip install --no-cache-dir swe-rex
+RUN pip install --no-cache-dir swe-rex tree-sitter==0.21.3 tree-sitter-languages==1.10.2
 # Build context is repositories/ : COPY the *_refactor repos to the image root.
 COPY . /
 RUN set -e; \
