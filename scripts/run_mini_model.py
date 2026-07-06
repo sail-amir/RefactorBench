@@ -349,6 +349,7 @@ def main() -> int:
         "model_name": args.model_name,
         "variant": args.variant,
         "instances": str(instances_path),
+        "agent_config": str(Path(args.agent_config)),
         "image": args.image,
         "workers": args.workers,
         "startup_timeout": args.startup_timeout,

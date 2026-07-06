@@ -125,6 +125,18 @@ python scripts/run_mini_model.py --model deepseek --variant descriptive \
   --startup-timeout 1200 --command-timeout 30 --workers 1
 ```
 
+To test a Mini prompt closer to the bash-tool training traces, keep the same
+runner and use plain fenced `bash` actions instead of Mini's
+`mswea_bash_command` tag:
+
+```bash
+python scripts/run_mini_model.py --model deepseek --variant descriptive \
+  --instances scripts/smoke_instances.yaml --slug mini-bash-smoke \
+  --image rb-swerex:py311-tree-sitter \
+  --startup-timeout 1200 --command-timeout 30 --workers 1 \
+  --agent-config scripts/rb_mini_agent_plain_bash.yaml
+```
+
 All backends write `runs/<slug>__<variant>/preds.json` and use the same
 `scripts/score.py`.
 
@@ -206,7 +218,11 @@ first-attempt container retry shows as the informational note `slow_start`.
   `--require-submit-marker` to test whether Mini-style explicit submission
   improves stopping behavior for models that otherwise keep calling tools.
 - **Mini-SWE-Agent backend.** `run_mini_model.py` uses `scripts/rb_mini_agent.yaml`,
-  a bash-only prompt with no SWE-agent edit-tool wording. It stops on
+  a bash-only prompt with no SWE-agent edit-tool wording. For a prompt-format
+  experiment closer to bash-tool training traces, pass
+  `--agent-config scripts/rb_mini_agent_plain_bash.yaml`; this keeps the same
+  Mini runner but asks for plain fenced `bash` actions instead of the
+  `mswea_bash_command` tag. It stops on
   `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, then the runner extracts the patch
   from git state with `git add -A -- . && git diff --cached --binary -- .` so
   newly created files are included. The built-in score step passes `--only` for

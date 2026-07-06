@@ -133,7 +133,10 @@ Important implications for the Mini baseline:
   SWE-agent's edit-tool bundle.
 - Mini's fenced `mswea_bash_command` action format is still not the training or
   serving interface seen for Pangu, so Mini should be treated as an intermediate
-  bash-only baseline, not the final training-matched backend.
+  bash-only baseline, not the final training-matched backend. A second Mini
+  config, `scripts/rb_mini_agent_plain_bash.yaml`, keeps the same Mini runner
+  but asks for plain fenced `bash` actions to test whether the Mini-specific tag
+  is itself hurting the model.
 - Mini writes trajectory JSON files with a different schema than SWE-agent.
 - Mini's SWE-bench tooling already understands `preds.json`/`model_patch`, but
   RefactorBench should not call Mini's SWE-bench runner directly because

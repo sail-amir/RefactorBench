@@ -1,0 +1,111 @@
+# RefactorBench Mini-SWE-Agent config with plain bash fenced actions.
+#
+# This is a prompt-format experiment for models trained on bash-tool traces.
+# It keeps Mini's text-action loop, but avoids the Mini-specific
+# mswea_bash_command tag. Use with:
+#   --agent-config scripts/rb_mini_agent_plain_bash.yaml
+agent:
+  system_template: |-
+    You are a helpful assistant that can interact with a computer.
+
+    You can execute bash commands and edit files to implement code refactoring tasks.
+    Each response should include brief reasoning text and exactly one bash tool call.
+
+    In this environment, write the bash tool call as a single fenced code block tagged bash.
+
+    Example:
+    I need to inspect the relevant source file first.
+    ```bash
+    sed -n '1,200p' path/to/file.py
+    ```
+  instance_template: |-
+    Please solve this refactoring task:
+
+    <refactoring_task>
+    {{task}}
+    </refactoring_task>
+
+    The repository is already checked out at:
+
+    <uploaded_files>
+    {{cwd}}
+    </uploaded_files>
+
+    You can execute bash commands and edit files to implement the necessary changes.
+
+    Recommended workflow:
+    1. Analyze the codebase by finding and reading relevant files.
+    2. Edit the source code to resolve the refactoring task.
+    3. Check definitions, imports, and usages so no stale references remain.
+    4. Review your changes with focused commands such as grep, rg, sed, nl, python syntax checks, or git diff.
+    5. Submit your changes and finish by issuing exactly this bash command:
+
+    ```bash
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+    ```
+
+    Command execution rules:
+    - Every assistant response must include exactly one bash fenced code block.
+    - Directory or environment variable changes are not persistent. Every action is executed in a new subshell.
+    - If you need a directory change, include it in the command, for example: cd /path && command.
+    - Do not run the application, start servers, or run the full test suite.
+    - Do not edit tests unless the refactoring task explicitly asks for test edits.
+    - If you need to edit files, use shell commands such as python one-liners, perl, sed, or here-documents carefully.
+    - After the completion command, you cannot continue working on this task.
+  step_limit: 0
+  cost_limit: 0.0
+  wall_time_limit_seconds: 0
+  max_consecutive_format_errors: 3
+
+model:
+  observation_template: |-
+    {% if output.exception_info -%}
+    {{output.exception_info}}
+    {% endif -%}
+    {{output.returncode}}
+    {% if output.output | length < 10000 -%}
+
+    {{ output.output -}}
+    {%- else -%}
+
+    The output of your last command was too long. Use a narrower command.
+
+    {%- set elided_chars = output.output | length - 10000 -%}
+    {{ output.output[:5000] }}
+    {{ elided_chars }} characters elided
+    {{ output.output[-5000:] }}
+    {%- endif %}
+  model_kwargs:
+    drop_params: true
+  cost_tracking: ignore_errors
+  action_regex: |-
+    ```(?:bash|sh)\s*\n(.*?)\n```
+  format_error_template: |-
+    {% if finish_reason is defined and finish_reason in ["length", "tool_calls"] -%}
+    Your previous response reached the output token limit before producing a complete bash action. Respond more concisely and provide exactly one action.
+    {%- else -%}
+    Format error: {{error}}
+    {%- endif %}
+
+    Always provide exactly one action in this format:
+
+    Briefly explain the next step.
+    ```bash
+    command_here
+    ```
+
+    To finish, issue exactly:
+
+    ```bash
+    echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT
+    ```
+
+environment:
+  env:
+    PAGER: cat
+    MANPAGER: cat
+    LESS: -R
+    PIP_PROGRESS_BAR: 'off'
+    TQDM_DISABLE: '1'
+    GIT_PAGER: cat
+    PYTHONSAFEPATH: '1'

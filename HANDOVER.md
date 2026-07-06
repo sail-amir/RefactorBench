@@ -99,6 +99,17 @@ python scripts/compare_agent_control.py \
   runs/pangu35b-mini__descriptive/scores.json
 ```
 
+Prompt-format diagnostic: keep the Mini runner, but replace the Mini-specific
+`mswea_bash_command` action tag with a plain fenced `bash` action:
+```bash
+python scripts/run_mini_model.py --model pangu --variant descriptive \
+  --instances scripts/smoke10_instances.yaml \
+  --slug mini-bash-smoke10 \
+  --image rb-swerex:py311-tree-sitter --workers 5 \
+  --startup-timeout 1800 --command-timeout 30 --per-instance-call-limit 100 \
+  --agent-config scripts/rb_mini_agent_plain_bash.yaml
+```
+
 ## Outstanding / next steps
 1. **Verify streaming reasoning capture on the pangu host** — run the 1-task `reason-check`
    smoke, confirm `reasoning chars captured > 0` in the `.traj` (see prior commands).
