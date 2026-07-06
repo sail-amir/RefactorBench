@@ -76,6 +76,15 @@ python scripts/run_toolcall_model.py --model pangu --variant descriptive \
 python scripts/report.py runs/pangu35b-toolcall__descriptive/scores.json
 ```
 
+If native tool-call hits call caps, rerun the same slice with explicit marker
+submission:
+```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --image rb-swerex:py311-tree-sitter --workers 8 --slug pangu35b-toolcall-marker \
+  --startup-timeout 1800 --command-timeout 30 --per-instance-call-limit 100 \
+  --docker-arg=-e --docker-arg PYTHONSAFEPATH=1 --require-submit-marker
+```
+
 Mini-SWE-Agent baseline for the same model/interface-mismatch experiment:
 ```bash
 source scripts/env.sh

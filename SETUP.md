@@ -202,7 +202,9 @@ first-attempt container retry shows as the informational note `slow_start`.
   no-tool assistant response with `finish_reason == "stop"` or the sentinel
   command. It shares patch extraction, scoring, resume, base-tree checks, and
   control metrics with Mini through `scripts/run_common.py`. It retries
-  transient gateway 429/408/5xx/timeouts with bounded backoff.
+  transient gateway 429/408/5xx/timeouts with bounded backoff. Add
+  `--require-submit-marker` to test whether Mini-style explicit submission
+  improves stopping behavior for models that otherwise keep calling tools.
 - **Mini-SWE-Agent backend.** `run_mini_model.py` uses `scripts/rb_mini_agent.yaml`,
   a bash-only prompt with no SWE-agent edit-tool wording. It stops on
   `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, then the runner extracts the patch

@@ -134,11 +134,28 @@ def chat_completion(args: Any, messages: list[dict[str, Any]]) -> dict[str, Any]
 
 
 
-def build_messages(task_text: str) -> list[dict[str, Any]]:
+def build_messages(task_text: str, require_submit_marker: bool = False) -> list[dict[str, Any]]:
+    if require_submit_marker:
+        finish_instruction = (
+            f"When the task is complete, finish by calling the bash tool with exactly: "
+            f"echo {SENTINEL}. Do not provide a final no-tool answer."
+        )
+        user_finish = (
+            f"- When satisfied, finish by calling bash with exactly: echo {SENTINEL}\n"
+            "- Do not finish with a normal assistant message; use the bash tool marker."
+        )
+    else:
+        finish_instruction = (
+            "When the task is complete, respond with a concise final summary and no tool call."
+        )
+        user_finish = (
+            f"- When satisfied, either provide a final answer with no tool call, "
+            f"or call bash with exactly: echo {SENTINEL}"
+        )
     system = (
         "You are a helpful assistant that can interact with a computer. "
         "Use the bash tool to inspect and edit the checked-out repository. "
-        "When the task is complete, respond with a concise final summary and no tool call."
+        f"{finish_instruction}"
     )
     user = f"""Please solve this refactoring task:
 
@@ -155,7 +172,7 @@ Rules:
 - Do not edit tests unless the task explicitly asks for test edits.
 - Search and inspect before editing; update definitions, imports, and usages consistently.
 - Review your changes with focused commands such as grep, rg, python syntax checks, or git diff.
-- When satisfied, either provide a final answer with no tool call, or call bash with exactly: echo {SENTINEL}
+{user_finish}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -197,7 +214,7 @@ def run_one(args: Any, inst: dict[str, Any]) -> dict[str, Any]:
 
     started = time.time()
     session: DockerSession | None = None
-    messages = build_messages(text_of(inst))
+    messages = build_messages(text_of(inst), require_submit_marker=args.require_submit_marker)
     trajectory: list[dict[str, Any]] = []
     actions: list[str] = []
     empty_responses = 0
@@ -208,6 +225,7 @@ def run_one(args: Any, inst: dict[str, Any]) -> dict[str, Any]:
     tokens_sent = 0
     tokens_received = 0
     length_retries = 0
+    submit_marker_reminders = 0
     exit_status = ""
     error = ""
     patch = ""
@@ -321,6 +339,23 @@ def run_one(args: Any, inst: dict[str, Any]) -> dict[str, Any]:
                     continue
 
                 if finish_reason == "stop":
+                    if args.require_submit_marker:
+                        submit_marker_reminders += 1
+                        trajectory.append({
+                            "missing_submit_marker": True,
+                            "reminder": submit_marker_reminders,
+                            "assistant": message,
+                        })
+                        messages.append(sanitize_assistant_message(message))
+                        messages.append({
+                            "role": "user",
+                            "content": (
+                                "You have not submitted correctly. To finish this task, "
+                                "call the bash tool with exactly this command and no other "
+                                f"command: echo {SENTINEL}"
+                            ),
+                        })
+                        continue
                     exit_status = "completed_no_tool"
                     break
                 if finish_reason == "length":
@@ -380,6 +415,7 @@ def run_one(args: Any, inst: dict[str, Any]) -> dict[str, Any]:
         "command_timeout": args.command_timeout,
         "output_truncation_limit": OUTPUT_TRUNCATION_LIMIT,
         "length_truncations": length_retries,
+        "submit_marker_reminders": submit_marker_reminders,
         "request_retries": request_retries,
     })
     if exit_status:
@@ -442,6 +478,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     ap.add_argument("--per-instance-call-limit", type=int, default=100)
     ap.add_argument("--max-consecutive-format-errors", type=int, default=3)
     ap.add_argument("--max-length-retries", type=int, default=1)
+    ap.add_argument("--require-submit-marker", action="store_true",
+                    help="require bash marker submission; no-tool stop responses get corrected")
     ap.add_argument("--max-input-tokens", type=int, default=0)
     ap.add_argument("--max-output-tokens", type=int, default=0)
     ap.add_argument("--temperature", type=float)
@@ -486,6 +524,7 @@ def main() -> int:
         "per_instance_call_limit": args.per_instance_call_limit,
         "max_consecutive_format_errors": args.max_consecutive_format_errors,
         "max_length_retries": args.max_length_retries,
+        "require_submit_marker": args.require_submit_marker,
         "max_input_tokens": args.max_input_tokens,
         "max_output_tokens": args.max_output_tokens,
         "temperature": args.temperature,

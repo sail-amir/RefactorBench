@@ -243,6 +243,11 @@ Prompt requirements:
   rules, but should avoid requiring the sentinel as the only valid completion
   path. A final no-tool assistant answer is a valid stop condition for this
   backend only when the served `finish_reason` is `stop`.
+- Add an optional diagnostic mode, `--require-submit-marker`, for models that
+  show poor stopping behavior under native no-tool completion. In this mode,
+  no-tool `finish_reason == "stop"` is not completion; the runner reminds the
+  model to call `bash` with `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` and
+  continues until the sentinel or call cap.
 - Keep the current safety rules from the Mini prompt where they matter for this
   benchmark: do not start servers, do not run full test suites, and do not edit
   tests unless explicitly requested.
@@ -783,6 +788,21 @@ python scripts/run_toolcall_model.py --model pangu --variant descriptive \
   --per-instance-call-limit 100
 ```
 
+If the native smoke shows many `call_cap` stops or premature no-tool stops,
+rerun the same slice with explicit marker submission:
+
+```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --instances scripts/smoke_instances.yaml \
+  --slug toolcall-smoke-marker \
+  --image rb-swerex:py311-tree-sitter \
+  --workers 1 \
+  --startup-timeout 1800 \
+  --command-timeout 30 \
+  --per-instance-call-limit 100 \
+  --require-submit-marker
+```
+
 Expected for the native tool-call smoke:
 
 - `runs/toolcall-smoke__descriptive/preds.json` exists.
@@ -1026,6 +1046,8 @@ deferred.
 - The tool-call runner handles multiple bash tool calls in one assistant turn.
 - The tool-call runner treats no-tool assistant responses as completion only
   when `finish_reason == "stop"`.
+- With `--require-submit-marker`, the tool-call runner does not complete on
+  no-tool `finish_reason == "stop"` and instead sends a submit-marker reminder.
 - The tool-call runner never submits on no-tool `finish_reason == "length"`;
   it records/retries truncation and otherwise exits with `length_truncated`.
 - The tool-call runner accepts `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` as
