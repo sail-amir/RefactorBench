@@ -181,12 +181,17 @@ Next steps:
        python scripts/run_model.py --model deepseek --variant descriptive \\
          --image $IMAGE --startup-timeout 1200 --parse thought_action --workers 4
   5) Compare:  python scripts/report.py runs/*/scores.json
-  6) Mini backend smoke (same scorer, bash-only agent):
+  6) Native bash tool-call smoke (primary interface-mismatch test):
+       python scripts/run_toolcall_model.py --model deepseek --variant descriptive \\
+         --instances scripts/smoke_instances.yaml --slug toolcall-smoke \\
+         --image $IMAGE --startup-timeout 1200 --command-timeout 30 \\
+         --workers 1
+  7) Mini backend smoke (same scorer, bash-only baseline):
        python scripts/run_mini_model.py --model deepseek --variant descriptive \\
          --instances scripts/smoke_instances.yaml --slug mini-smoke \\
          --image $IMAGE --startup-timeout 1200 --command-timeout 30 \\
          --workers 1
-  7) Control metrics:  python scripts/compare_agent_control.py runs/*/scores.json
+  8) Control metrics:  python scripts/compare_agent_control.py runs/*/scores.json
 
 Notes:
   - --startup-timeout high helps on loaded hosts (container start can be slow).

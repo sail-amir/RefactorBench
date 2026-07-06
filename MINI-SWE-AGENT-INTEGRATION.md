@@ -1,12 +1,18 @@
-# Mini-SWE-Agent Integration Plan
+# Agent Interface Integration Plan
 
 Date: 2026-07-05
 
 ## Goal
 
-Add Mini-SWE-Agent as a second evaluation backend for RefactorBench without
-breaking the existing SWE-agent harness. The Mini backend should produce the
-same `preds.json` contract that `scripts/score.py` already scores:
+Add evaluation backends that can test whether Pangu's RefactorBench drop is
+caused by an agent-interface mismatch, without breaking the existing SWE-agent
+harness. The primary new backend should be a native OpenAI-compatible
+`bash(command: string)` tool-calling runner. The already-added Mini-SWE-Agent
+backend remains useful as a bash-only baseline, but it is not the closest match
+to the model's served tool-calling interface.
+
+Every backend must produce the same `preds.json` contract that
+`scripts/score.py` already scores:
 
 ```json
 {
@@ -18,8 +24,8 @@ same `preds.json` contract that `scripts/score.py` already scores:
 }
 ```
 
-This lets old SWE-agent runs and new Mini-SWE-Agent runs be compared with the
-same scorer and report tooling.
+This lets SWE-agent, Mini-SWE-Agent, and native bash-tool runs be compared with
+the same scorer and report tooling.
 
 ## Current Harness Facts
 
@@ -29,7 +35,7 @@ same scorer and report tooling.
 - `scripts/score.py` is already backend-agnostic enough for this plan: it only
   requires a `preds.json` with `instance_id` and `model_patch`.
 - RefactorBench instance YAMLs are in SWE-agent expert-file format. The fields
-  Mini needs are already present:
+  alternate backends need are already present:
   - task id: `problem_statement.id`
   - prompt text: `problem_statement.text`
   - repo name: `env.repo.repo_name`
@@ -38,25 +44,65 @@ same scorer and report tooling.
   installs `swe-rex`, `tree-sitter==0.21.3`, and
   `tree-sitter-languages==1.10.2` into that image.
 - The current SWE-agent prompt in `scripts/rb_agent.yaml` exposes bash plus
-  SWE-agent edit tools, including `str_replace_editor`. Mini-SWE-Agent should
-  intentionally use bash-only interaction to match Mini training traces better.
+  SWE-agent edit tools, including `str_replace_editor`. The training data did
+  not expose `str_replace_editor`, so the key interface test should use a
+  single bash tool only.
+
+## Training And Serving Facts Checked
+
+The actual training file checked was:
+
+```text
+C:\Users\a84414458\Downloads\20260630_easy_medium_hard_refactoring_panguml2_slow_ml15_v3.json
+```
+
+Observed facts from that file:
+
+- 2,381 trajectories.
+- All observed task ids are `__lazy`; `lazy` evaluation is useful later, but is
+  out of scope for this immediate plan.
+- The meta prompt defines exactly one tool: `bash(command: string)`.
+- There are 52,029 parsed tool calls, all named `bash`.
+- There are no SWE-agent edit tools such as `str_replace_editor`.
+- There are no Mini fenced commands such as `mswea_bash_command`.
+- There are no OpenAI `tool_calls` fields in the raw file. Tool calls are
+  serialized in assistant text with the model's special-token format, for
+  example:
+
+```text
+[unused11]
+[{"name": "bash", "arguments": {"command": "ls -la"}}]
+[unused12]
+```
+
+Do not overfit the eval prompt to those raw special tokens. A live Pangu gateway
+curl showed the served model can emit normal OpenAI-compatible `tool_calls`
+when the request includes a `tools` definition. Therefore the correct
+training-interface test is a native tool-calling runner with one `bash` tool,
+not a runner that asks the model to literally print `[unused11]` and
+`[unused12]`.
 
 ## Design Decision
 
-Add a separate Mini runner instead of replacing `scripts/run_model.py`.
+Add a separate native bash-tool runner instead of replacing `scripts/run_model.py`.
+Keep the Mini runner as a second baseline.
 
 Reasons:
 
 - It keeps the existing SWE-agent baseline stable.
 - It allows apples-to-apples comparison between agent backends.
 - It avoids mixing SWE-agent-specific arguments such as `--parse`,
-  `--agent.model.litellm_model_registry`, and edit-tool bundles with Mini
-  settings.
+  `--agent.model.litellm_model_registry`, and edit-tool bundles with bash-tool
+  or Mini settings.
 - It makes failures easier to attribute: same model, same tasks, same scorer,
   different agent interface.
+- It tests the interface Pangu is actually served through: OpenAI-compatible
+  `tools` and `tool_calls`.
 
 Target new files:
 
+- `scripts/run_common.py`
+- `scripts/run_toolcall_model.py`
 - `scripts/run_mini_model.py`
 - `scripts/rb_mini_agent.yaml`
 
@@ -81,10 +127,13 @@ Primary docs checked:
 - YAML configuration:
   https://mini-swe-agent.com/latest/advanced/yaml_configuration/
 
-Important implications:
+Important implications for the Mini baseline:
 
-- Mini-SWE-Agent is bash-oriented by default, which is the point of this
-  integration.
+- Mini-SWE-Agent is bash-oriented by default, so it is much closer than
+  SWE-agent's edit-tool bundle.
+- Mini's fenced `mswea_bash_command` action format is still not the training or
+  serving interface seen for Pangu, so Mini should be treated as an intermediate
+  bash-only baseline, not the final training-matched backend.
 - Mini writes trajectory JSON files with a different schema than SWE-agent.
 - Mini's SWE-bench tooling already understands `preds.json`/`model_patch`, but
   RefactorBench should not call Mini's SWE-bench runner directly because
@@ -96,7 +145,191 @@ Important implications:
 
 ## Implementation Plan
 
-### 1. Pin and install Mini-SWE-Agent
+### 1. Extract mandatory shared machinery into `scripts/run_common.py`
+
+Before adding the native tool-call runner, move the verified backend-agnostic
+pieces out of `scripts/run_mini_model.py` into `scripts/run_common.py` and make
+both alternate runners import them. This is mandatory, not an optional cleanup:
+the A/B is confounded if Mini and native tool-call runs collect patches, score,
+resume, or compute control metrics differently.
+
+Shared helpers should include:
+
+- model/env/sampling/registry resolution;
+- Docker image presence checks and startup helpers where backend-neutral;
+- base tree hashing and precheck logic;
+- command execution wrapper inputs shared across bash backends:
+  `--command-timeout`, output truncation limit, output truncation format, and
+  return-code/exception serialization;
+- patch extraction:
+  `git add -A -- .` then `git diff --cached --binary -- .`;
+- per-task `result.json` writing and atomic `preds.json` rebuild with
+  `os.replace`;
+- scorer invocation with `--only`;
+- resume/redo-existing logic;
+- `control_metrics_from_actions` and the exact `control` dict schema stored in
+  `preds.json`;
+- rough accumulated-context token counting and `max_input_tokens` guardrail.
+
+Do not let `run_toolcall_model.py` reimplement these pieces. It should differ
+from `run_mini_model.py` in the model interaction layer only: native
+OpenAI-compatible `tool_calls` versus Mini's fenced text action parser.
+
+### 2. Add `scripts/run_toolcall_model.py`
+
+Implement a custom RefactorBench batch runner that talks to the model through
+the OpenAI-compatible chat-completions API with exactly one tool:
+
+```json
+{
+  "type": "function",
+  "function": {
+    "name": "bash",
+    "description": "Execute a bash command",
+    "parameters": {
+      "type": "object",
+      "required": ["command"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The bash command to execute"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+```
+
+This is the primary fix for the training/eval mismatch. Do not ask the model to
+emit Mini fenced commands, SWE-agent edit tool calls, or literal `[unused11]`
+special-token blocks. The gateway/vLLM parser should expose the model's tool
+selection as normal `message.tool_calls`.
+
+The loop per instance should be:
+
+1. Start a Docker container from `rb-swerex:py311-tree-sitter` with working
+   directory `/<repo>`.
+2. Send a system prompt plus the RefactorBench task as a chat-completions
+   request with the single `bash` tool above.
+3. If the response has `tool_calls`, execute each `bash` command sequentially
+   inside the container and append one `role: tool` message per call.
+4. If the response has no `tool_calls` and `finish_reason == "stop"`, treat it
+   as normal completion and extract the patch from git state.
+5. If the response has no `tool_calls` and `finish_reason == "length"`, do not
+   submit. Record `length_truncated`, send one concise correction/retry if
+   budget remains, and otherwise fail the task with a truncation stop reason.
+6. If the response has no `tool_calls` and any other `finish_reason`, treat it
+   as a malformed/unknown completion, not as submission.
+7. If the model calls `bash` with exactly
+   `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, treat that as a backup
+   completion marker and extract the patch from git state.
+8. If the model calls an unknown tool, omits `command`, returns malformed JSON
+   arguments, or produces unusable tool calls, record a format/tool-call error
+   and feed back a concise correction message. Cap consecutive format errors.
+
+The runner should support multiple tool calls in one assistant message because
+the training data contains occasional multi-call assistant turns. Execute them
+in order and preserve each API-provided `tool_call_id` in the corresponding
+tool-result message.
+
+Prompt requirements:
+
+- Keep the system prompt short and aligned with the served tool interface: the
+  model has one `bash` tool and should use it to inspect/edit files.
+- Do not mention `str_replace_editor`, `mswea_bash_command`, or raw
+  `[unused11]`/`[unused12]` tokens.
+- The user prompt can reuse the existing RefactorBench task text and command
+  rules, but should avoid requiring the sentinel as the only valid completion
+  path. A final no-tool assistant answer is a valid stop condition for this
+  backend only when the served `finish_reason` is `stop`.
+- Keep the current safety rules from the Mini prompt where they matter for this
+  benchmark: do not start servers, do not run full test suites, and do not edit
+  tests unless explicitly requested.
+
+CLI should mirror the useful parts of `scripts/run_model.py` and
+`scripts/run_mini_model.py`:
+
+```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --image rb-swerex:py311-tree-sitter \
+  --workers 8 \
+  --slug pangu-toolcall-attempt1 \
+  --startup-timeout 1800 \
+  --command-timeout 30 \
+  --per-instance-call-limit 100
+```
+
+Required arguments:
+
+- `--model {claude,deepseek,glm,pangu}`
+- `--variant {base,descriptive,lazy}`; `lazy` is supported by the runner but is
+  out of scope for the immediate comparison
+- `--slug`
+- `--model-name`
+- `--api-base`
+- `--api-key`
+- `--env-file`, default `scripts/models.env`
+- `--sampling-file`, default `scripts/sampling.yaml`
+- `--instances`, for smoke subsets
+- `--image`, default `rb-swerex:py311-tree-sitter`
+- `--workers`
+- `--startup-timeout`
+- `--command-timeout`
+- `--docker-arg`, repeatable
+- `--per-instance-call-limit`
+- `--max-input-tokens`
+- `--max-output-tokens`
+- `--temperature`
+- `--top-p`
+- `--top-k`
+- `--reasoning-effort`
+- `--redo-existing`
+- `--no-score`
+- `--score-checkout`, default `local`
+- `--dry-run`
+
+Model/gateway behavior:
+
+- Use the same `openai/<gateway-model-name>` naming convention and env/preset
+  resolution as `scripts/run_model.py`.
+- Send the OpenAI-compatible `tools` field on every model request.
+- Before every request, enforce `max_input_tokens` with the shared
+  accumulated-context guardrail from `run_common.py`; do not wait for gateway
+  context errors.
+- Preserve standard sampling and `extra_body` settings from
+  `scripts/sampling.yaml`, including `top_k`, `min_p`,
+  `repetition_penalty`, `frequency_penalty`, `presence_penalty`, and
+  `reasoning_effort` when set.
+- Capture `reasoning` / `reasoning_content` from responses when present, but do
+  not require visible assistant prose before a tool call.
+- Save `reasoning` / `reasoning_content` in the trajectory, but do not resend
+  those fields in later chat history unless the gateway explicitly requires
+  them. Resend assistant history as content plus `tool_calls` only.
+
+Recommended output directory:
+
+```text
+runs/<slug>__<variant>/
+  toolcall_run.config.yaml
+  preds.json
+  <instance_id>/
+    <instance_id>.traj.json
+    <instance_id>.debug.log
+    patch.diff
+    result.json
+```
+
+Trajectory JSON should store the full request/response control surface needed
+for debugging: assistant content, reasoning fields, tool calls, tool outputs,
+finish reason, stop reason, token usage, commands, return codes, output
+truncation, timing, and format/tool-call errors.
+
+The runner must write the same `control` dict schema into `preds.json` as the
+Mini runner. `scripts/compare_agent_control.py` should be able to consume
+tool-call runs without new trajectory parsing.
+
+### 3. Pin and install Mini-SWE-Agent
 
 Update `setup.sh` after the SWE-agent install step:
 
@@ -113,7 +346,7 @@ verify the host venv can install Mini-SWE-Agent during setup. If this fails,
 fix the host `pip`/proxy configuration before running any Mini experiment; do
 not try to solve it from inside the task Docker container.
 
-### 2. Add `scripts/rb_mini_agent.yaml`
+### 4. Keep `scripts/rb_mini_agent.yaml` for the Mini baseline
 
 Create a Mini-specific prompt/config that mirrors the RefactorBench refactoring
 prompt but exposes only bash actions.
@@ -146,12 +379,13 @@ exception even if upstream behavior drifts. Without this hook, Mini may run to
 the call cap and make normal completions look like repetition loops.
 
 Important: do not include SWE-agent edit tools or any `str_replace_editor`
-wording in this config. The goal is to evaluate the model under the interface it
-was trained on. Also do not rely on model-visible stdout to transport the final
-patch; command output may be truncated by the agent layer. The runner, not the
-model, must collect the patch from git state.
+wording in this config. Mini is a bash-only baseline, not the exact
+training-matched backend, because it still requires fenced
+`mswea_bash_command` actions. Also do not rely on model-visible stdout to
+transport the final patch; command output may be truncated by the agent layer.
+The runner, not the model, must collect the patch from git state.
 
-### 3. Add `scripts/run_mini_model.py`
+### 5. Keep `scripts/run_mini_model.py` for the Mini baseline
 
 Implement a custom RefactorBench Mini batch runner. Do not use Mini's SWE-bench
 runner directly.
@@ -195,9 +429,9 @@ Required arguments:
 - `--score-checkout`, default `local`
 - `--dry-run`
 
-Reuse the same preset/env/sampling behavior as `scripts/run_model.py`.
-Implementation can either import shared helpers from `run_model.py` or move the
-common code into a small `scripts/run_common.py`.
+Reuse the same preset/env/sampling behavior as `scripts/run_model.py` through
+`scripts/run_common.py`. The Mini runner and tool-call runner must use the same
+shared helper implementations for backend-neutral behavior.
 
 `--startup-timeout` is kept for CLI symmetry with `scripts/run_model.py`, but it
 may not map to Mini's Docker environment if Mini has no separate container-start
@@ -236,7 +470,7 @@ runs/<slug>__<variant>/
     result.json
 ```
 
-### 4. Instance execution logic
+### 6. Shared instance execution logic
 
 For each instance from `scripts/<variant>_instances.yaml`:
 
@@ -244,7 +478,7 @@ For each instance from `scripts/<variant>_instances.yaml`:
    - `iid = instance["problem_statement"]["id"]`
    - `task_text = instance["problem_statement"]["text"]`
    - `repo = instance["env"]["repo"]["repo_name"]`
-2. Set Mini Docker environment:
+2. Set the Docker execution environment:
    - image: CLI `--image` or YAML deployment image
    - cwd: `"/" + repo`
    - env:
@@ -262,15 +496,26 @@ For each instance from `scripts/<variant>_instances.yaml`:
      - fail loudly if the image is missing;
      - do not clone, fetch, or reset the repo from the network;
      - use the baked preexisting repo at `/<repo>`.
-   - command timeout: set Mini's per-command timeout explicitly from
+   - command timeout: set each backend's per-command timeout explicitly from
      `--command-timeout`; do not rely only on the prompt telling the model not
      to run the app or full test suite.
-3. Build the prompt from `scripts/rb_mini_agent.yaml` and `task_text`.
-4. Run Mini-SWE-Agent for that task.
-5. Stop the Mini loop as soon as the configured completion detector sees
+   - command-output truncation: both bash backends must use the same truncation
+     limit and equivalent head/tail truncation format, matching Mini's current
+     observation budget unless changed deliberately for both backends. Record
+     the timeout and truncation settings in the run config and each task's
+     `result.json`.
+3. For the tool-call backend, build chat messages and expose only the native
+   `bash(command: string)` tool.
+4. For the Mini backend, build the prompt from `scripts/rb_mini_agent.yaml` and
+   `task_text`.
+5. Stop the tool-call backend when either the assistant returns no tool calls
+   with `finish_reason == "stop"` or the model calls `bash` with
+   `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`. Do not stop on no-tool
+   `finish_reason == "length"`.
+6. Stop the Mini loop as soon as the configured completion detector sees
    `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`. Treat the marker only as the stop
    signal, not as patch transport.
-6. Before container teardown, extract the patch programmatically from git state:
+7. Before container teardown, extract the patch programmatically from git state:
 
    ```bash
    git add -A -- .
@@ -284,9 +529,10 @@ For each instance from `scripts/<variant>_instances.yaml`:
    files. If a binary diff ever appears, `score.py`'s `git apply` attempts can
    handle it, while the final GNU `patch` fallback may not. That is fine because
    binary patches are out of scope for these Python refactoring tasks.
-7. Save the collected patch to `patch.diff`.
-8. Write per-task artifacts.
-9. Write per-task `result.json` first, then merge into `preds.json`.
+8. Save the collected patch to `patch.diff`.
+9. Write per-task artifacts.
+10. Write per-task `result.json` first, including the shared `control` dict,
+    then merge into `preds.json`.
 
 Use per-task `result.json` files as the source of truth during the run. Build
 or update `preds.json` by reading the union of all result files on disk, writing
@@ -295,7 +541,11 @@ corrupt JSON if multiple workers finish at the same time or the process is
 interrupted. If duplicate result files exist for the same task, use
 last-writer-wins based on file modification time.
 
-### 5. Base tree alignment precheck
+The `control` dict written by Mini and the tool-call backend must have the same
+field names and semantics so `scripts/compare_agent_control.py` can compare
+them without backend-specific trajectory parsing.
+
+### 7. Base tree alignment precheck
 
 Before running tasks, verify that the container repo content matches the scorer
 base for every repo in the selected instance set.
@@ -314,18 +564,23 @@ VCS metadata, initialize git, add all files, and commit. If any repo tree hash
 differs, fail before spending model calls. A base mismatch otherwise shows up
 later as confusing `patch_apply_failed` or false task failures.
 
-### 6. Budget and diagnostic parity
+### 8. Budget and diagnostic parity
 
-The A/B is only trustworthy if both backends use comparable budgets and expose
-the failure modes being tested.
+The comparison is only trustworthy if all compared backends use comparable
+budgets and expose the failure modes being tested.
 
 Budget policy:
 
-- Use the same model-call cap for SWE-agent and Mini where possible.
+- Use the same model-call cap for SWE-agent, Mini, and tool-call runs where
+  possible.
 - Log actual model calls, prompt tokens, completion tokens, total tokens, wall
   time, exit status, and patch byte length for every task.
-- Do not pretend SWE-agent tool steps and Mini bash steps are identical units.
-  Report both raw backend step count and model-call count.
+- Do not pretend SWE-agent tool steps, Mini bash steps, and native bash tool
+  calls are identical units. Report raw backend step count, executed command
+  count, and model-call count.
+- Keep per-command timeout and output truncation aligned between Mini and the
+  native tool-call runner, or log any deliberate difference as an experiment
+  variable.
 - Keep sampling identical across arms. A backend comparison should not also
   introduce a new `reasoning_effort`, `repetition_penalty`, temperature, or
   output-token setting.
@@ -335,15 +590,24 @@ Loop metrics required from the first implementation:
 - action duplicate rate: hash each submitted action/command after whitespace
   normalization and report the fraction of repeated actions;
 - max repeated-action streak;
-- empty-response rate;
-- malformed-action rate, if Mini exposes parse/action errors;
+- empty-response rate, with interpretation caveat below;
+- malformed-action or malformed-tool-call rate;
 - stop reason: completed marker, call cap, timeout, runtime error, or unknown.
 
 The comparison report should show pass rate and these loop/control metrics
-together. The point is not just whether Mini changes the score; it is whether it
-reduces the repetition and empty-output failures seen under SWE-agent.
+together. The point is not just whether Mini or native tool calling changes the
+score; it is whether the bash-only interfaces reduce the repetition,
+format-error, and empty-output failures seen under SWE-agent.
 
-### 7. Resume behavior
+Interpretation caveat: `empty-response rate` is interface-confounded in the
+three-way comparison. Native tool-calling backends often have empty visible
+assistant content by design, while Mini's text action format usually cannot.
+Use duplicate-command/action rate, max repeated-action streak, call-cap rate,
+timeout rate, and malformed-tool/action rate as the primary cross-backend loop
+signals. Treat empty-response rate mainly as a within-native-backend health
+signal.
+
+### 9. Resume behavior
 
 Default behavior should resume incomplete runs:
 
@@ -356,9 +620,10 @@ Default behavior should resume incomplete runs:
 This is important because 100-task RefactorBench runs are long and company
 proxy/Docker issues can interrupt them.
 
-### 8. Scoring integration
+### 10. Scoring integration
 
-After Mini finishes, call the existing scorer exactly like `run_model.py`:
+After either alternate backend finishes, call the existing scorer exactly like
+`run_model.py`:
 
 ```bash
 python scripts/score.py \
@@ -370,38 +635,40 @@ python scripts/score.py \
   --only <comma-separated-instance-ids>
 ```
 
-No scorer fork should be needed for the first implementation. If a Mini patch
-fails to apply, that is a model/agent output issue and should be visible as
-`patch_apply_failed` in the normal score output.
+No scorer fork should be needed for the first implementation. If a Mini or
+tool-call patch fails to apply, that is a model/agent output issue and should
+be visible as `patch_apply_failed` in the normal score output.
 
 `score.py --only` already computes `total.n` and per-repo denominators from the
 filtered task ids, so smoke and 5-task runs are not diluted by the missing tasks.
-The Mini runner's built-in auto-score step must always pass `--only` with the
-exact ids actually attempted in that run. Without `--only`, a smoke or 5-task
-`preds.json` would be scored against the full benchmark and reported as missing
-the other tasks.
+Each alternate runner's built-in auto-score step must always pass `--only` with
+the exact ids actually attempted in that run. Without `--only`, a smoke or
+5-task `preds.json` would be scored against the full benchmark and reported as
+missing the other tasks.
 
-### 9. Status tooling updates
+### 11. Status tooling updates
 
 `scripts/run_status.py` currently expects SWE-agent `.traj` files and
 `run_batch.config.yaml`.
 
 Minimum acceptable first version:
 
-- Mini runner works and scores.
-- `run_status.py` or a new comparison helper reports Mini task status, step
-  count, model-call count, token totals when available, exit status, patch
-  bytes, duplicate-action rate, max repeat streak, empty-response rate, and
-  stop reason.
+- Tool-call runner and Mini runner work and score.
+- `run_status.py` or a new comparison helper reports task status, step count,
+  executed command count, model-call count, token totals when available, exit
+  status, patch bytes, duplicate-action rate, max repeat streak,
+  empty-response rate, malformed-tool/action rate, and stop reason.
 
 Recommended follow-up:
 
+- Detect tool-call runs by `toolcall_run.config.yaml`.
 - Detect Mini runs by `mini_run.config.yaml` or `*.traj.json`.
-- Parse Mini trajectory step count.
-- Parse Mini exit status/completion marker.
-- Parse token/call counts if present in the Mini trajectory schema.
-- Parse repeated-action and empty-response metrics for both SWE-agent and Mini
-  trajectories where possible.
+- Parse tool-call and Mini trajectory step counts.
+- Parse tool-call no-tool completion, tool-call sentinel completion, Mini exit
+  status, and Mini completion marker.
+- Parse token/call counts if present in each trajectory schema.
+- Parse repeated-action and empty-response metrics for SWE-agent, Mini, and
+  tool-call trajectories where possible.
 - Reuse existing health flags:
   - `no_trajectory`
   - `empty_patch`
@@ -410,39 +677,52 @@ Recommended follow-up:
   - `no_prediction`
 - Add Mini-specific health flags only if there is clear evidence in artifacts.
 
-### 10. Documentation updates
+### 12. Documentation updates
 
 Update stale docs while adding Mini:
 
 - Replace old `rb-swerex:py311` examples with
   `rb-swerex:py311-tree-sitter`.
 - Add a "SWE-agent backend" section with current `scripts/run_model.py` command.
-- Add a "Mini-SWE-Agent backend" section with the new
+- Add a "Native bash tool-call backend" section with the new
+  `scripts/run_toolcall_model.py` command.
+- Add a "Mini-SWE-Agent backend" section with the
   `scripts/run_mini_model.py` command.
-- Explicitly state that both backends write `preds.json` and use the same
+- Explicitly state that all backends write `preds.json` and use the same
   `scripts/score.py`.
-- Explain that Mini is intended for models trained on Mini-SWE-Agent
-  trajectories, while SWE-agent remains the historical benchmark baseline.
+- Explain that the native bash tool-call backend is the primary
+  training-interface test for Pangu because the served model emits
+  OpenAI-compatible `tool_calls`.
+- Explain that Mini is a bash-only baseline, while SWE-agent remains the
+  historical benchmark baseline.
 
 ## Validation Plan
 
 ### A. Static checks
 
 ```bash
-python -m py_compile scripts/run_mini_model.py
+python -m py_compile scripts/run_common.py scripts/run_toolcall_model.py scripts/run_mini_model.py
+python scripts/run_toolcall_model.py --help
 python scripts/run_mini_model.py --help
 ```
 
-Confirm `--help` exposes both `--startup-timeout` and `--command-timeout`, and
-that the implementation warns if `--startup-timeout` cannot be mapped to Mini.
+Confirm both runners expose `--startup-timeout`, `--command-timeout`,
+`--per-instance-call-limit`, `--instances`, `--image`, `--redo-existing`, and
+`--no-score`. Confirm `run_toolcall_model.py --help` documents native
+OpenAI-compatible bash tool calls and no-tool assistant completion.
 
 ### B. Dependency check
 
 ```bash
 source scripts/env.sh
 python -m pip show mini-swe-agent
+python -m pip show openai || python -m pip show litellm
 python -m pip show pyyaml
 ```
+
+The tool-call backend can use either the OpenAI SDK or LiteLLM, but it must send
+the OpenAI-compatible `tools` field and read `message.tool_calls` from the
+served response.
 
 ### C. Docker image check
 
@@ -466,14 +746,20 @@ docker run --rm rb-swerex:py311-tree-sitter /bin/sh -lc '
 '
 ```
 
-This catches the `git diff -- .` failure mode before any Mini run.
+This catches the `git diff -- .` failure mode before any alternate-backend run.
 
 ### E. Base tree check
 
-Run the Mini runner in dry-run/precheck mode and confirm it verifies tree hashes
-for every repo in the selected instance set:
+Run both alternate runners in dry-run/precheck mode and confirm they verify tree
+hashes for every repo in the selected instance set:
 
 ```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --instances scripts/smoke_instances.yaml \
+  --slug toolcall-smoke-precheck \
+  --image rb-swerex:py311-tree-sitter \
+  --dry-run
+
 python scripts/run_mini_model.py --model pangu --variant descriptive \
   --instances scripts/smoke_instances.yaml \
   --slug mini-smoke-precheck \
@@ -487,6 +773,46 @@ repo.
 ### F. One-task smoke
 
 ```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --instances scripts/smoke_instances.yaml \
+  --slug toolcall-smoke \
+  --image rb-swerex:py311-tree-sitter \
+  --workers 1 \
+  --startup-timeout 1800 \
+  --command-timeout 30 \
+  --per-instance-call-limit 100
+```
+
+Expected for the native tool-call smoke:
+
+- `runs/toolcall-smoke__descriptive/preds.json` exists.
+- `model_patch` is non-empty.
+- if the task creates a new file, the patch contains `new file mode`.
+- `scores.json` exists.
+- `scores.json.total.n` equals the number of actually-run ids, not 100.
+- No trajectory mentions `str_replace_editor` or `mswea_bash_command`.
+- The trajectory contains OpenAI-compatible `tool_calls` for bash commands.
+- The stop reason is no-tool assistant completion with `finish_reason == "stop"`
+  or sentinel completion, not call cap.
+- Any no-tool response with `finish_reason == "length"` is recorded as
+  `length_truncated` or retried; it is not treated as completed.
+- `preds.json` contains the same `control` dict schema used by Mini.
+- Tool-call command output is truncated with the same configured limit/shape as
+  Mini observations.
+- The status/comparison output reports duplicate-command rate, max repeat
+  streak, empty-response rate, malformed-tool-call rate, stop reason, model
+  calls, tokens when available, wall time, and patch bytes.
+
+Check:
+
+```bash
+rg -n "str_replace_editor|edit_anthropic|review_on_submit|mswea_bash_command" \
+  runs/toolcall-smoke__descriptive
+```
+
+Then keep the Mini smoke as the bash-only baseline:
+
+```bash
 python scripts/run_mini_model.py --model pangu --variant descriptive \
   --instances scripts/smoke_instances.yaml \
   --slug mini-smoke \
@@ -497,7 +823,7 @@ python scripts/run_mini_model.py --model pangu --variant descriptive \
   --per-instance-call-limit 100
 ```
 
-Expected:
+Expected for the Mini smoke:
 
 - `runs/mini-smoke__descriptive/preds.json` exists.
 - `model_patch` is non-empty.
@@ -522,6 +848,15 @@ rg -n "str_replace_editor|edit_anthropic|review_on_submit" \
 Create a 5-task subset across different repos and run:
 
 ```bash
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --instances scripts/mini_5_instances.yaml \
+  --slug toolcall-5 \
+  --image rb-swerex:py311-tree-sitter \
+  --workers 2 \
+  --startup-timeout 1800 \
+  --command-timeout 30 \
+  --per-instance-call-limit 100
+
 python scripts/run_mini_model.py --model pangu --variant descriptive \
   --instances scripts/mini_5_instances.yaml \
   --slug mini-5 \
@@ -535,23 +870,27 @@ python scripts/run_mini_model.py --model pangu --variant descriptive \
 Validate:
 
 ```bash
-python scripts/report.py runs/mini-smoke__descriptive/scores.json \
+python scripts/report.py runs/toolcall-smoke__descriptive/scores.json \
+  runs/toolcall-5__descriptive/scores.json \
+  runs/mini-smoke__descriptive/scores.json \
   runs/mini-5__descriptive/scores.json
 ```
 
 ### H. Resume test
 
-1. Start a 5-task Mini run.
+1. Start a 5-task tool-call run.
 2. Interrupt after one or two completed tasks.
 3. Rerun the same command.
 4. Confirm completed tasks are skipped and missing tasks continue.
 5. Rerun with `--redo-existing` and confirm all selected tasks rerun.
+6. Repeat once for Mini if Mini remains in the comparison.
 
 ### I. Comparison run
 
 Run the same model, same instances, same sampling, same image, and same model
-call cap with both backends. Do not compare Mini against historical scores when
-answering the interface-mismatch question; re-run the SWE-agent arm fresh.
+call cap with all three backends. Do not compare alternate backends against
+historical scores when answering the interface-mismatch question; re-run the
+SWE-agent arm fresh.
 
 ```bash
 python scripts/run_model.py --model pangu --variant descriptive \
@@ -562,6 +901,15 @@ python scripts/run_model.py --model pangu --variant descriptive \
   --startup-timeout 1800 \
   --per-instance-call-limit 100 \
   --parse auto
+
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --instances scripts/smoke_instances.yaml \
+  --slug toolcall-smoke \
+  --image rb-swerex:py311-tree-sitter \
+  --workers 1 \
+  --startup-timeout 1800 \
+  --command-timeout 30 \
+  --per-instance-call-limit 100
 
 python scripts/run_mini_model.py --model pangu --variant descriptive \
   --instances scripts/smoke_instances.yaml \
@@ -578,20 +926,57 @@ Then compare:
 ```bash
 python scripts/report.py \
   runs/swe-smoke__descriptive/scores.json \
+  runs/toolcall-smoke__descriptive/scores.json \
   runs/mini-smoke__descriptive/scores.json
 ```
 
 Also run the loop/control comparison helper and report pass rate together with
-duplicate-action rate, max repeat streak, empty-response rate, stop reason
-distribution, calls, tokens, and wall time.
+duplicate-command/action rate, max repeat streak, empty-response rate,
+malformed-tool/action rate, stop reason distribution, calls, tokens, and wall
+time. The immediate comparison remains on `descriptive`; `lazy` is explicitly
+deferred.
 
 ## Risks And Mitigations
 
+- Shared-machinery divergence:
+  - Make `scripts/run_common.py` mandatory for patch extraction, base checks,
+    scoring, resume, output truncation, token guardrails, and control metrics.
+  - Do not accept a tool-call runner that reimplements these pieces locally.
+  - If a helper needs backend-specific behavior, pass a small explicit option
+    and log it in the run config.
+- Tool-call parser mismatch:
+  - The raw training file uses special-token serialization, but the live gateway
+    demonstrated OpenAI-compatible `tool_calls`. Validate this with a one-task
+    smoke before any large run.
+  - If the served response does not produce `message.tool_calls` for the
+    `bash` tool, stop and debug gateway/parser configuration rather than
+    falling back to Mini silently.
+- Transient gateway failures:
+  - Retry 429, 408, 5xx, URL errors, and request timeouts with bounded
+    exponential backoff before failing a task.
+  - Keep retry settings in the run config and control metrics. Without this,
+    the native tool-call arm is less robust than SWE-agent/Mini under shared
+    gateway load and the A/B can be biased by infrastructure errors.
+- Incorrect stop condition in native tool-call runner:
+  - Treat assistant responses with no tool calls as normal completion only when
+    `finish_reason == "stop"`.
+  - Treat `finish_reason == "length"` as truncation: retry once if budget
+    remains or stop with `length_truncated`, but do not submit.
+  - Also accept a `bash` call whose command is exactly
+    `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`.
+  - Do not require the sentinel, because the training trajectories usually end
+    with a normal no-tool assistant summary.
+- Tool-call history incompatibility:
+  - Persist `reasoning` / `reasoning_content` to trajectory files for analysis.
+  - Do not resend those reasoning fields in the next request unless the gateway
+    explicitly documents that it wants them.
+  - Smoke-test the exact history format with the Pangu gateway before a batch.
 - Mini-SWE-Agent API drift:
   - Pin the version after verifying the Linux eval host.
   - Keep Mini integration behind `scripts/run_mini_model.py`.
 - Patch extraction mismatch:
-  - Use the completion marker only as a stop signal.
+  - Use completion markers and no-tool assistant completion only as stop
+    signals.
   - Extract patches programmatically before container teardown with
     `git add -A -- .` and `git diff --cached --binary -- .`.
   - Save both `patch.diff` and raw trajectory for debugging.
@@ -601,7 +986,8 @@ distribution, calls, tokens, and wall time.
     runner after every step.
   - Validate smoke trajectories stop by completed marker rather than call cap.
 - Hanging shell commands:
-  - Set an explicit Mini per-command timeout from `--command-timeout`.
+  - Set an explicit per-command timeout from `--command-timeout` in both
+    alternate backends.
   - Treat `--startup-timeout` as best-effort only if Mini cannot map it.
 - Parallel write corruption:
   - Write per-task `result.json`, rebuild `preds.json` from result files,
@@ -611,33 +997,63 @@ distribution, calls, tokens, and wall time.
     before model calls.
 - Confounded A/B:
   - Keep sampling, model-call caps, image, instances, and scoring checkout the
-    same across both arms.
+    same across all compared arms.
   - Report loop/control metrics beside pass rate.
 - Different prompt changes task difficulty:
-  - Keep the Mini prompt semantically aligned with `scripts/rb_agent.yaml`.
-  - The only intended interface change is Mini bash-only interaction.
+  - Keep the native tool-call and Mini prompts semantically aligned with the
+    RefactorBench task prompt.
+  - The intended interface changes are limited to native `bash` tool calls for
+    the primary test and Mini fenced bash for the baseline.
+  - `lazy` evaluation is deferred for now; the immediate comparison remains on
+    the same `descriptive` task slice.
 - Model still may fail:
-  - Mini backend removes the SWE-agent tool mismatch, but it does not guarantee
-    higher scores. If failures remain loops or bad edits under bash-only Mini,
-    that is stronger evidence of a model/control issue.
+  - Native bash tool calls remove the SWE-agent edit-tool mismatch, but they do
+    not guarantee higher scores. If failures remain loops or bad edits under
+    native bash tool calls, that is stronger evidence of a model/control issue.
 
 ## Definition Of Done
 
 - `bash setup.sh` installs Mini-SWE-Agent in the host venv.
+- `scripts/run_common.py` exists and owns shared patch extraction, base-tree
+  precheck, env/sampling resolution, scoring, resume, output truncation,
+  token guardrails, `preds.json` rebuild, and control-metric computation.
+- `scripts/run_toolcall_model.py --help` works.
 - `scripts/run_mini_model.py --help` works.
+- `scripts/run_toolcall_model.py` sends exactly one OpenAI-compatible tool,
+  `bash(command: string)`, and reads returned `message.tool_calls`.
+- The tool-call runner retries transient gateway 429/408/5xx/timeouts with
+  bounded backoff and records retry counts in control metrics.
+- The tool-call runner handles multiple bash tool calls in one assistant turn.
+- The tool-call runner treats no-tool assistant responses as completion only
+  when `finish_reason == "stop"`.
+- The tool-call runner never submits on no-tool `finish_reason == "length"`;
+  it records/retries truncation and otherwise exits with `length_truncated`.
+- The tool-call runner accepts `echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` as
+  a backup stop marker.
+- The tool-call runner strips `reasoning` / `reasoning_content` from re-sent
+  assistant history unless the gateway explicitly requires those fields.
 - `rb_mini_agent.yaml` or `scripts/run_mini_model.py` wires
   `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT` as an actual Mini stop condition.
-- The runner enforces an explicit per-command timeout.
-- The runner extracts patches with `git add -A -- .` and
+- Both alternate runners enforce an explicit per-command timeout.
+- Both alternate runners use the same configured command-output truncation
+  limit and equivalent head/tail truncation format.
+- Both alternate runners extract patches with `git add -A -- .` and
   `git diff --cached --binary -- .`, so new files are included.
-- The runner never parses the final patch from model-visible stdout.
-- The runner verifies base tree-hash alignment before spending model calls.
+- Neither alternate runner parses the final patch from model-visible stdout.
+- Both alternate runners verify base tree-hash alignment before spending model
+  calls.
+- Both alternate runners enforce `max_input_tokens` before each model request.
+- Both alternate runners write the same `control` dict schema into `preds.json`.
+- A one-task native tool-call smoke run produces a non-empty `preds.json`.
 - A one-task Mini smoke run produces a non-empty `preds.json`.
-- The existing `scripts/score.py` scores the Mini smoke run.
+- The existing `scripts/score.py` scores both alternate smoke runs.
 - The built-in auto-score path passes `--only` for the actually-run task ids.
 - Resume works after interruption.
-- Docs show both SWE-agent and Mini-SWE-Agent commands.
+- Docs show SWE-agent, native bash tool-call, and Mini-SWE-Agent commands.
 - SWE-agent baseline commands still work unchanged.
 - A/B on the same task slice reports pass rate plus duplicate-action rate,
-  max repeated-action streak, empty-response rate, stop reasons, model calls,
-  tokens when available, wall time, and patch size under comparable budgets.
+  max repeated-action streak, empty-response rate, malformed-tool/action rate,
+  stop reasons, model calls, tokens when available, wall time, and patch size
+  under comparable budgets.
+- The immediate acceptance comparison uses the same `descriptive` instances;
+  `lazy` is not required for this phase.

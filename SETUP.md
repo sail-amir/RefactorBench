@@ -102,9 +102,21 @@ python scripts/run_model.py --model deepseek --variant descriptive \
   --image rb-swerex:py311-tree-sitter --startup-timeout 1200 --workers 1
 ```
 
-### 6. Mini-SWE-Agent smoke test (`add-log-parameter-get-debug-flag-task`)
+### 6. Native bash tool-call smoke test (`add-log-parameter-get-debug-flag-task`)
 
-Use this backend for models trained on Mini-SWE-Agent bash trajectories:
+Use this backend to test models served with OpenAI-compatible `tools` /
+`tool_calls` and a single `bash(command)` tool:
+
+```bash
+python scripts/run_toolcall_model.py --model deepseek --variant descriptive \
+  --instances scripts/smoke_instances.yaml --slug toolcall-smoke \
+  --image rb-swerex:py311-tree-sitter \
+  --startup-timeout 1200 --command-timeout 30 --workers 1
+```
+
+### 7. Mini-SWE-Agent smoke test (`add-log-parameter-get-debug-flag-task`)
+
+Use this as the bash-only Mini baseline:
 
 ```bash
 python scripts/run_mini_model.py --model deepseek --variant descriptive \
@@ -113,15 +125,20 @@ python scripts/run_mini_model.py --model deepseek --variant descriptive \
   --startup-timeout 1200 --command-timeout 30 --workers 1
 ```
 
-Both backends write `runs/<slug>__<variant>/preds.json` and use the same
+All backends write `runs/<slug>__<variant>/preds.json` and use the same
 `scripts/score.py`.
 
-### 7. Full run + report
+### 8. Full run + report
 
 ```bash
 # one model × one variant (100 tasks)
 python scripts/run_model.py --model deepseek --variant descriptive \
   --image rb-swerex:py311-tree-sitter --startup-timeout 1200 --workers 4
+
+# same model through native bash tool-calls
+python scripts/run_toolcall_model.py --model deepseek --variant descriptive \
+  --image rb-swerex:py311-tree-sitter \
+  --startup-timeout 1200 --command-timeout 30 --workers 4
 
 # same model through Mini-SWE-Agent
 python scripts/run_mini_model.py --model deepseek --variant descriptive \
@@ -135,7 +152,7 @@ python scripts/report.py runs/*/scores.json
 python scripts/compare_agent_control.py runs/*/scores.json
 ```
 
-### 8. Inspect a run (status + health)
+### 9. Inspect a run (status + health)
 
 After a smoke or full run, get a per-task status/health report:
 
@@ -179,6 +196,13 @@ first-attempt container retry shows as the informational note `slow_start`.
   fixes, so such scripts launch the app/server and hang on swe-rex's 30s command
   timeout), and the agent is told not to run the app/tests. Pass `--agent-config ""`
   to fall back to SWE-agent's stock bug-fixing prompt.
+- **Native bash tool-call backend.** `run_toolcall_model.py` sends an
+  OpenAI-compatible `tools` request with exactly one `bash(command)` tool,
+  executes returned `message.tool_calls` in the task container, and stops on a
+  no-tool assistant response with `finish_reason == "stop"` or the sentinel
+  command. It shares patch extraction, scoring, resume, base-tree checks, and
+  control metrics with Mini through `scripts/run_common.py`. It retries
+  transient gateway 429/408/5xx/timeouts with bounded backoff.
 - **Mini-SWE-Agent backend.** `run_mini_model.py` uses `scripts/rb_mini_agent.yaml`,
   a bash-only prompt with no SWE-agent edit-tool wording. It stops on
   `COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT`, then the runner extracts the patch

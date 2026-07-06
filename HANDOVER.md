@@ -7,7 +7,8 @@ Everything below is committed + pushed unless noted.
 ## What this is
 A multi-model agent harness for **RefactorBench** (100 multi-file refactoring
 tasks across 9 OSS repos), pointed at a shared **OpenAI-compatible gateway**.
-It supports the original SWE-agent backend plus a bash-only Mini-SWE-Agent backend.
+It supports the original SWE-agent backend, a native bash tool-call backend,
+and a bash-only Mini-SWE-Agent backend.
 Presets: `claude | deepseek | glm | pangu`. Variants: `base | descriptive | lazy`.
 Harness lives in `scripts/`; bootstrap with `setup.sh` (see `SETUP.md`).
 
@@ -45,7 +46,7 @@ Harness lives in `scripts/`; bootstrap with `setup.sh` (see `SETUP.md`).
 ## Analysis tooling (all in `scripts/`, committed)
 - `token_usage.py <run>` — total + per-step mean/median input/output tokens (incl. reasoning).
 - `compare_agent_control.py <run...>` — pass rate plus duplicate-action, empty-response,
-  stop-reason, call, token, and loop metrics for SWE-agent/Mini comparisons.
+  stop-reason, call, token, and loop metrics for SWE-agent/tool-call/Mini comparisons.
 - `plot_success_by_type.py <run> [--compare <run2>]` — success rate per Fowler type.
 - `plot_run_health.py <run> [--compare]` — step-count box plot + exit-status mix.
 - `analysis/descriptive_task_types.jsonl` — the 100 tasks labeled by Fowler refactoring type.
@@ -65,7 +66,17 @@ python scripts/report.py runs/pangu35b__descriptive/scores.json
 Prereq: `scripts/models.env` must have the real `PANGU_MODEL=openai/<name>` (it's gitignored).
 Resumable: re-running the same `--slug` skips completed tasks.
 
-Mini-SWE-Agent equivalent for the same model/interface-mismatch experiment:
+Native bash tool-call equivalent for the same model/interface-mismatch experiment:
+```bash
+source scripts/env.sh
+python scripts/run_toolcall_model.py --model pangu --variant descriptive \
+  --image rb-swerex:py311-tree-sitter --workers 8 --slug pangu35b-toolcall \
+  --startup-timeout 1800 --command-timeout 30 --per-instance-call-limit 100 \
+  --docker-arg=-e --docker-arg PYTHONSAFEPATH=1
+python scripts/report.py runs/pangu35b-toolcall__descriptive/scores.json
+```
+
+Mini-SWE-Agent baseline for the same model/interface-mismatch experiment:
 ```bash
 source scripts/env.sh
 python scripts/run_mini_model.py --model pangu --variant descriptive \
@@ -75,6 +86,7 @@ python scripts/run_mini_model.py --model pangu --variant descriptive \
 python scripts/report.py runs/pangu35b-mini__descriptive/scores.json
 python scripts/compare_agent_control.py \
   runs/pangu35b__descriptive/scores.json \
+  runs/pangu35b-toolcall__descriptive/scores.json \
   runs/pangu35b-mini__descriptive/scores.json
 ```
 

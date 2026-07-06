@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Mini-SWE-Agent add-on setup for an already-bootstrapped RefactorBench host.
+# Alternate-agent add-on setup for an already-bootstrapped RefactorBench host.
 #
 # Use this on the Linux eval host when setup.sh has already created .venv and
-# the rb-swerex image, and you only want to add/verify the Mini backend.
+# the rb-swerex image, and you only want to add/verify the Mini/tool-call backends.
 # For a fresh machine, prefer: bash setup.sh
 
 set -uo pipefail
@@ -37,8 +37,9 @@ print("imports ok")
 PY
 
 log "Checking runner syntax"
-"$VPY" -m py_compile scripts/run_mini_model.py scripts/compare_agent_control.py \
-  || die "Mini runner syntax check failed"
+"$VPY" -m py_compile scripts/run_common.py scripts/run_toolcall_model.py \
+  scripts/run_mini_model.py scripts/compare_agent_control.py \
+  || die "alternate runner syntax check failed"
 
 log "Checking Docker image $IMAGE"
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
@@ -63,8 +64,14 @@ else
   echo "scripts/smoke_instances.yaml already exists"
 fi
 
-log "Mini setup complete"
+log "Alternate-agent setup complete"
 cat <<EOF
+Try the native bash tool-call smoke run:
+  source scripts/env.sh
+  python scripts/run_toolcall_model.py --model pangu --variant descriptive \\
+    --instances scripts/smoke_instances.yaml --slug toolcall-smoke \\
+    --image $IMAGE --startup-timeout 1800 --command-timeout 30 --workers 1
+
 Try the Mini smoke run:
   source scripts/env.sh
   python scripts/run_mini_model.py --model pangu --variant descriptive \\
