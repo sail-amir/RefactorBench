@@ -170,6 +170,7 @@ python scripts/plot_radar_by_type.py \
   runs/pangu-35b__descriptive/scores.json \
   runs/pangu-7b__descriptive/scores.json \
   --labels GLM-5.1 pangu-7b-refactoring pangu-35b pangu-7b \
+  --legend-label-width 16 \
   --out runs/refactorbench_radar.png
 ```
 

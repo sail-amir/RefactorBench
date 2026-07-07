@@ -27,6 +27,7 @@ import json
 import math
 import os
 import sys
+import textwrap
 from typing import Any
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +39,7 @@ DEFAULT_LEGEND_FONT_SIZE = 14
 DEFAULT_TITLE_FONT_SIZE = 14
 DEFAULT_LABEL_PAD = 20
 DEFAULT_LABEL_WIDTH = 16
+DEFAULT_LEGEND_LABEL_WIDTH = 16
 DEFAULT_DPI = 200
 
 CANONICAL_TYPES = [
@@ -83,7 +85,7 @@ ROLE_STYLE = {
     "frontier": dict(color="#1A237E", lw=2.2, ls=(0, (6, 4)), fill=0.0, z=5),
     "hero": dict(color="#1B7F3B", lw=2.6, ls="-", fill=0.40, z=4),
     "baseline35": dict(color="#D98A29", lw=2.2, ls="-", fill=0.07, z=2),
-    "baseline7": dict(color="#C44E52", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
+    "baseline7": dict(color="#B22234", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
 }
 FALLBACK_COLORS = ["#4E79A7", "#59A14F", "#E15759", "#76B7B2", "#F28E2B", "#B07AA1"]
 
@@ -264,12 +266,25 @@ def style_for_series(role: str | None, idx: int, fill_alpha: float | None, no_sh
     return style
 
 
-def legend_label(role: str | None, label: str, meta: dict[str, Any]) -> str:
+def wrap_legend_name(name: str, width: int) -> str:
+    if width <= 0:
+        return name
+    parts = textwrap.wrap(
+        name,
+        width=width,
+        break_long_words=False,
+        break_on_hyphens=True,
+    )
+    return "\n".join(parts) if parts else name
+
+
+def legend_label(role: str | None, label: str, meta: dict[str, Any], legend_label_width: int) -> str:
     name = ROLE_DISPLAY.get(role or "", label)
+    name = wrap_legend_name(name, legend_label_width)
     percent = normalize_pass_rate(meta.get("pass_rate"))
     if percent is None:
         return name
-    return f"{name}  {percent:.0f}%"
+    return f"{name}\n{percent:.0f}%"
 
 
 def legend_sort_key(item: dict[str, Any]) -> tuple[int, int]:
@@ -309,6 +324,7 @@ def plot_radar(
     title_font_size: int,
     label_pad: int,
     label_width: int,
+    legend_label_width: int,
 ) -> None:
     try:
         import matplotlib
@@ -342,7 +358,7 @@ def plot_radar(
                 meta=meta,
                 role=role,
                 style=style,
-                legend=legend_label(role, label, meta),
+                legend=legend_label(role, label, meta, legend_label_width=legend_label_width),
             )
         )
 
@@ -415,7 +431,7 @@ def plot_radar(
         framealpha=0.95,
         fontsize=legend_font_size,
         handlelength=2.4,
-        columnspacing=2.4,
+        columnspacing=1.6,
         borderpad=0.9,
         handletextpad=0.7,
     )
@@ -471,6 +487,8 @@ def main() -> int:
                     help=f"outward padding for refactoring-type labels (default {DEFAULT_LABEL_PAD})")
     ap.add_argument("--label-width", type=int, default=DEFAULT_LABEL_WIDTH,
                     help=f"wrap refactoring-type labels after this many chars (default {DEFAULT_LABEL_WIDTH})")
+    ap.add_argument("--legend-label-width", type=int, default=DEFAULT_LEGEND_LABEL_WIDTH,
+                    help=f"wrap legend names after this many chars (default {DEFAULT_LEGEND_LABEL_WIDTH})")
     ap.add_argument("--title", help="override chart title")
     args = ap.parse_args()
 
@@ -484,8 +502,9 @@ def main() -> int:
         args.legend_font_size,
         args.title_font_size,
         args.label_width,
+        args.legend_label_width,
     ) <= 0:
-        sys.exit("font sizes and --label-width must be positive integers")
+        sys.exit("font sizes, --label-width, and --legend-label-width must be positive integers")
     if args.label_pad < 0:
         sys.exit("--label-pad must be >= 0")
     if args.fill_alpha is not None and args.fill_alpha < 0:
@@ -529,6 +548,7 @@ def main() -> int:
         title_font_size=args.title_font_size,
         label_pad=args.label_pad,
         label_width=args.label_width,
+        legend_label_width=args.legend_label_width,
     )
     return 0
 
