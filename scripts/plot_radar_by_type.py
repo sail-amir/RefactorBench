@@ -17,7 +17,7 @@ Usage:
 
     python scripts/plot_radar_by_type.py runs/runA runs/runB runs/runC \
       --labels A B C --sort support --min-support 3 \
-      --label-font-size 12 --label-pad 36
+      --label-font-size 12 --label-pad 36 --no-shading
 """
 from __future__ import annotations
 
@@ -316,6 +316,8 @@ def main() -> int:
                     help="keep type axes where every compared run solved zero tasks")
     ap.add_argument("--fill-alpha", type=float, default=0.10,
                     help="polygon fill alpha; use 0 for no fill")
+    ap.add_argument("--no-shading", "--no-fill", action="store_true",
+                    help="draw only radar outlines, with no filled polygon shading")
     ap.add_argument("--label-font-size", type=int, default=DEFAULT_LABEL_FONT_SIZE,
                     help=f"refactoring-type label font size (default {DEFAULT_LABEL_FONT_SIZE})")
     ap.add_argument("--radial-font-size", type=int, default=DEFAULT_RADIAL_FONT_SIZE,
@@ -345,6 +347,8 @@ def main() -> int:
         sys.exit("font sizes and --label-width must be positive integers")
     if args.label_pad < 0:
         sys.exit("--label-pad must be >= 0")
+    if args.fill_alpha < 0:
+        sys.exit("--fill-alpha must be >= 0")
 
     taxonomy = load_taxonomy(args.taxonomy)
     scored_and_meta = [load_scores(path) for path in args.results]
@@ -368,6 +372,7 @@ def main() -> int:
         print(f"\nremoved zero-pass axes ({len(removed)}): {', '.join(removed)}")
 
     out = args.out or default_out(args.results[0])
+    fill_alpha = 0.0 if args.no_shading else args.fill_alpha
     plot_radar(
         types,
         aggs,
@@ -375,7 +380,7 @@ def main() -> int:
         labels,
         out,
         title=args.title,
-        fill_alpha=args.fill_alpha,
+        fill_alpha=fill_alpha,
         label_font_size=args.label_font_size,
         radial_font_size=args.radial_font_size,
         legend_font_size=args.legend_font_size,
