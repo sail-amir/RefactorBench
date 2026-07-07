@@ -4,9 +4,9 @@
 Each spoke is a refactoring type from analysis/descriptive_task_types.jsonl.
 Each run is drawn as a polygon whose radius is the success rate for that type.
 
-By default, type axes where every run solved zero tasks are removed. This keeps
-the radar chart focused on categories where at least one compared run succeeded.
-Use --keep-zero-axes to show those axes anyway.
+By default, axes use the canonical 13-category clockwise order used in the
+RefactorBench summary figure. Use --drop-zero-axes to remove categories where
+every compared run solved zero tasks.
 
 Usage:
     python scripts/plot_radar_by_type.py \
@@ -16,8 +16,8 @@ Usage:
       --out runs/pangu-mini-radar.png
 
     python scripts/plot_radar_by_type.py runs/runA runs/runB runs/runC \
-      --labels A B C --sort support --min-support 3 \
-      --label-font-size 12 --label-pad 36 --no-shading
+      --labels GLM-5.1 pangu-7b-refactoring pangu-35b pangu-7b \
+      --out runs/refactorbench_radar.png
 """
 from __future__ import annotations
 
@@ -32,12 +32,60 @@ from typing import Any
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPTS_DIR)
 DEFAULT_TAXONOMY = os.path.join(REPO_ROOT, "analysis", "descriptive_task_types.jsonl")
-DEFAULT_LABEL_FONT_SIZE = 10
-DEFAULT_RADIAL_FONT_SIZE = 9
-DEFAULT_LEGEND_FONT_SIZE = 10
+DEFAULT_LABEL_FONT_SIZE = 15
+DEFAULT_RADIAL_FONT_SIZE = 10
+DEFAULT_LEGEND_FONT_SIZE = 14
 DEFAULT_TITLE_FONT_SIZE = 14
-DEFAULT_LABEL_PAD = 28
+DEFAULT_LABEL_PAD = 20
 DEFAULT_LABEL_WIDTH = 16
+DEFAULT_DPI = 200
+
+CANONICAL_TYPES = [
+    "Move Function",
+    "Add Parameter (Change Fn Declaration)",
+    "Rename Function/Method",
+    "Inline / Merge Module",
+    "Remove Dead Code",
+    "Rename Variable/Constant/Attribute",
+    "Rename File/Module",
+    "Combine Functions into Class",
+    "Introduce Parameter Object",
+    "Rename Class",
+    "Move Class",
+    "Extract Class",
+    "Split Function/Phase",
+]
+
+TYPE_LABELS = {
+    "Move Function": "Move Function",
+    "Add Parameter (Change Fn Declaration)": "Add Parameter/\nChange Value/\nDecoupling",
+    "Rename Function/Method": "Rename Function/\nMethod",
+    "Inline / Merge Module": "Inline / Merge\nModule",
+    "Remove Dead Code": "Remove Dead Code",
+    "Rename Variable/Constant/Attribute": "Rename Variable/\nConstant/\nAttribute",
+    "Rename File/Module": "Rename File/\nModule",
+    "Combine Functions into Class": "Combine\nFunctions into\nClass",
+    "Introduce Parameter Object": "Introduce\nParameter Object",
+    "Rename Class": "Rename Class",
+    "Move Class": "Move Class",
+    "Extract Class": "Extract Class",
+    "Split Function/Phase": "Split Function/\nPhase",
+}
+
+ROLE_ORDER = ["frontier", "hero", "baseline35", "baseline7"]
+ROLE_DISPLAY = {
+    "frontier": "GLM-5.1 (frontier)",
+    "hero": "pangu-7b-refactoring",
+    "baseline35": "pangu-35b",
+    "baseline7": "pangu-7b",
+}
+ROLE_STYLE = {
+    "frontier": dict(color="#1A237E", lw=2.2, ls=(0, (6, 4)), fill=0.0, z=5),
+    "hero": dict(color="#1B7F3B", lw=2.6, ls="-", fill=0.40, z=4),
+    "baseline35": dict(color="#D98A29", lw=2.2, ls="-", fill=0.07, z=2),
+    "baseline7": dict(color="#8E5FB0", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
+}
+FALLBACK_COLORS = ["#4E79A7", "#59A14F", "#E15759", "#76B7B2", "#F28E2B", "#B07AA1"]
 
 
 def load_scores(path: str) -> tuple[dict[str, bool], dict[str, Any]]:
@@ -105,7 +153,11 @@ def select_types(
     keep_zero_axes: bool,
     sort: str,
 ) -> list[str]:
-    all_types = sorted(set().union(*(set(a) for a in aggs)))
+    present_types = set().union(*(set(a) for a in aggs))
+    if sort == "fixed":
+        all_types = [t for t in CANONICAL_TYPES if t in present_types or min_support <= 0]
+    else:
+        all_types = sorted(present_types)
     rows = []
     for typ in all_types:
         totals = [a.get(typ, {}).get("total", 0) for a in aggs]
@@ -124,7 +176,9 @@ def select_types(
         rows.append((typ, max(rates), sum(totals), max_total, total_passes))
     if not rows:
         sys.exit("no refactoring types remain after filtering")
-    if sort == "support":
+    if sort == "fixed":
+        pass
+    elif sort == "support":
         rows.sort(key=lambda r: (-r[2], r[0]))
     elif sort == "name":
         rows.sort(key=lambda r: r[0])
@@ -155,21 +209,9 @@ def wrap_label(text: str, width: int = 18) -> str:
 
 def axis_labels(
     types: list[str],
-    aggs: list[dict[str, dict[str, int]]],
     label_width: int,
 ) -> list[str]:
-    labels = []
-    for typ in types:
-        supports = [a.get(typ, {}).get("total", 0) for a in aggs]
-        nonzero = [n for n in supports if n]
-        if not nonzero:
-            support = "n=0"
-        elif min(nonzero) == max(nonzero):
-            support = f"n={nonzero[0]}"
-        else:
-            support = f"n={min(nonzero)}-{max(nonzero)}"
-        labels.append(f"{wrap_label(typ, width=label_width)}\n{support}")
-    return labels
+    return [TYPE_LABELS.get(typ, wrap_label(typ, width=label_width)) for typ in types]
 
 
 def values_for(agg: dict[str, dict[str, int]], types: list[str]) -> list[float]:
@@ -177,27 +219,64 @@ def values_for(agg: dict[str, dict[str, int]], types: list[str]) -> list[float]:
     for typ in types:
         item = agg.get(typ, {})
         total = item.get("total", 0)
-        vals.append((item.get("passed", 0) / total) if total else 0.0)
+        vals.append((item.get("passed", 0) / total * 100.0) if total else 0.0)
     return vals
 
 
-def align_axis_labels(ax: Any, angles: list[float]) -> None:
-    for label, theta in zip(ax.get_xticklabels(), angles):
-        display_theta = math.pi / 2 - theta
-        x = math.cos(display_theta)
-        y = math.sin(display_theta)
-        if x > 0.20:
-            label.set_horizontalalignment("left")
-        elif x < -0.20:
-            label.set_horizontalalignment("right")
-        else:
-            label.set_horizontalalignment("center")
-        if y > 0.70:
-            label.set_verticalalignment("bottom")
-        elif y < -0.70:
-            label.set_verticalalignment("top")
-        else:
-            label.set_verticalalignment("center")
+def role_for_label(label: str) -> str | None:
+    text = label.lower().replace("_", "-")
+    if "glm" in text:
+        return "frontier"
+    if "pangu" in text and "refactoring" in text:
+        return "hero"
+    if "pangu" in text and "35b" in text:
+        return "baseline35"
+    if "pangu" in text and "7b" in text:
+        return "baseline7"
+    return None
+
+
+def normalize_pass_rate(rate: Any) -> float | None:
+    if rate is None:
+        return None
+    try:
+        value = float(rate)
+    except (TypeError, ValueError):
+        return None
+    return value * 100.0 if value <= 1.0 else value
+
+
+def style_for_series(role: str | None, idx: int, fill_alpha: float | None, no_shading: bool) -> dict[str, Any]:
+    if role in ROLE_STYLE:
+        style = dict(ROLE_STYLE[role])
+    else:
+        style = dict(
+            color=FALLBACK_COLORS[idx % len(FALLBACK_COLORS)],
+            lw=2.2,
+            ls="-",
+            fill=0.07,
+            z=3,
+        )
+    if no_shading:
+        style["fill"] = 0.0
+    elif fill_alpha is not None and style["fill"] > 0:
+        style["fill"] = fill_alpha
+    return style
+
+
+def legend_label(role: str | None, label: str, meta: dict[str, Any]) -> str:
+    name = ROLE_DISPLAY.get(role or "", label)
+    percent = normalize_pass_rate(meta.get("pass_rate"))
+    if percent is None:
+        return name
+    return f"{name}  {percent:.0f}%"
+
+
+def legend_sort_key(item: dict[str, Any]) -> tuple[int, int]:
+    role = item["role"]
+    if role in ROLE_ORDER:
+        return (ROLE_ORDER.index(role), item["idx"])
+    return (len(ROLE_ORDER), item["idx"])
 
 
 def print_table(types: list[str], labels: list[str], aggs: list[dict[str, dict[str, int]]]) -> None:
@@ -222,7 +301,8 @@ def plot_radar(
     labels: list[str],
     out: str,
     title: str | None,
-    fill_alpha: float,
+    fill_alpha: float | None,
+    no_shading: bool,
     label_font_size: int,
     radial_font_size: int,
     legend_font_size: int,
@@ -234,6 +314,8 @@ def plot_radar(
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
     except ModuleNotFoundError as exc:
         if exc.name == "matplotlib":
             sys.exit("matplotlib is required for radar plots; install it with: python -m pip install matplotlib")
@@ -243,49 +325,106 @@ def plot_radar(
     angles = [2 * math.pi * i / n_axes for i in range(n_axes)]
     angles_closed = angles + [angles[0]]
 
-    fig_size = max(
-        9.0,
-        min(16.0, 7.0 + n_axes * 0.35 + max(0, label_font_size - 10) * 0.2),
-    )
-    fig = plt.figure(figsize=(fig_size, fig_size))
-    ax = fig.add_subplot(111, polar=True)
+    fig = plt.figure(figsize=(13, 14), dpi=DEFAULT_DPI)
+    ax = fig.add_axes([0.13, 0.17, 0.74, 0.687], polar=True)
     ax.set_theta_offset(math.pi / 2)
     ax.set_theta_direction(-1)
 
-    colors = plt.cm.tab10.colors
+    series = []
     for idx, (agg, label, meta) in enumerate(zip(aggs, labels, metas)):
-        vals = values_for(agg, types)
+        role = role_for_label(label)
+        style = style_for_series(role, idx, fill_alpha=fill_alpha, no_shading=no_shading)
+        series.append(
+            dict(
+                idx=idx,
+                agg=agg,
+                label=label,
+                meta=meta,
+                role=role,
+                style=style,
+                legend=legend_label(role, label, meta),
+            )
+        )
+
+    for item in sorted(series, key=lambda x: (x["style"]["z"], x["idx"])):
+        style = item["style"]
+        vals = values_for(item["agg"], types)
         vals_closed = vals + [vals[0]]
-        color = colors[idx % len(colors)]
-        overall = meta.get("pass_rate")
-        legend_label = label
-        if overall is not None:
-            legend_label = f"{label} ({overall * 100:.0f}%)"
-        ax.plot(angles_closed, vals_closed, color=color, linewidth=2.0, label=legend_label)
-        if fill_alpha > 0:
-            ax.fill(angles_closed, vals_closed, color=color, alpha=fill_alpha)
+        if style["fill"] > 0:
+            ax.fill(
+                angles_closed,
+                vals_closed,
+                color=style["color"],
+                alpha=style["fill"],
+                zorder=style["z"],
+            )
+        ax.plot(
+            angles_closed,
+            vals_closed,
+            color=style["color"],
+            linewidth=style["lw"],
+            linestyle=style["ls"],
+            zorder=style["z"] + 0.5,
+            solid_capstyle="round",
+            dash_capstyle="round",
+        )
 
-    ax.set_ylim(0, 1)
-    ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], fontsize=radial_font_size)
-    ax.set_rlabel_position(90)
     ax.set_xticks(angles)
-    ax.set_xticklabels(axis_labels(types, aggs, label_width=label_width), fontsize=label_font_size)
+    ax.set_xticklabels(axis_labels(types, label_width=label_width), fontsize=label_font_size)
     ax.tick_params(axis="x", pad=label_pad)
-    align_axis_labels(ax, angles)
-    ax.grid(True, linestyle=":", alpha=0.6)
+    ax.set_ylim(0, 100)
+    ax.set_yticks([20, 40, 60, 80, 100])
+    ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], fontsize=radial_font_size, color="#888")
+    ax.set_rlabel_position(0)
+    ax.grid(color="#DDDDDD", linewidth=0.8)
+    ax.spines["polar"].set_color("#333333")
 
-    if title is None:
-        title = "RefactorBench Success Rate By Refactoring Type"
-    ax.set_title(title, y=1.14, fontsize=title_font_size)
-    ax.legend(
-        loc="upper right",
-        bbox_to_anchor=(1.27, 1.17),
+    if title:
+        ax.set_title(title, y=1.14, fontsize=title_font_size)
+
+    handles = []
+    legend_labels = []
+    legend_items = sorted(series, key=legend_sort_key)
+    for item in legend_items:
+        style = item["style"]
+        if style["fill"] >= 0.3:
+            handle = Patch(
+                facecolor=style["color"],
+                alpha=0.55,
+                edgecolor=style["color"],
+                linewidth=style["lw"],
+            )
+        else:
+            handle = Line2D(
+                [0],
+                [0],
+                color=style["color"],
+                linewidth=style["lw"] + 0.4,
+                linestyle=style["ls"],
+            )
+        handles.append(handle)
+        legend_labels.append(item["legend"])
+
+    legend = fig.legend(
+        handles,
+        legend_labels,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.035),
+        ncol=len(handles),
+        frameon=True,
+        framealpha=0.95,
         fontsize=legend_font_size,
-        framealpha=0.9,
+        handlelength=2.4,
+        columnspacing=2.4,
+        borderpad=0.9,
+        handletextpad=0.7,
     )
-    fig.tight_layout()
-    fig.savefig(out, dpi=150, bbox_inches="tight")
+    legend.get_frame().set_edgecolor("#CCCCCC")
+    for text, item in zip(legend.get_texts(), legend_items):
+        text.set_color(item["style"]["color"])
+        text.set_fontweight("bold")
+
+    fig.savefig(out, facecolor="white", dpi=DEFAULT_DPI)
     print(f"wrote {out}")
 
 
@@ -307,15 +446,17 @@ def main() -> int:
     ap.add_argument("--taxonomy", default=DEFAULT_TAXONOMY,
                     help="task->types jsonl (default analysis/descriptive_task_types.jsonl)")
     ap.add_argument("--out", help="output PNG (default <first_run>/success_radar_by_type.png)")
-    ap.add_argument("--sort", choices=["support", "name", "max-rate", "passes"],
-                    default="support",
-                    help="spoke order (default support)")
+    ap.add_argument("--sort", choices=["fixed", "support", "name", "max-rate", "passes"],
+                    default="fixed",
+                    help="spoke order (default fixed RefactorBench summary order)")
     ap.add_argument("--min-support", type=int, default=1,
                     help="drop types whose maximum support across runs is below N")
+    ap.add_argument("--drop-zero-axes", action="store_true",
+                    help="drop type axes where every compared run solved zero tasks")
     ap.add_argument("--keep-zero-axes", action="store_true",
-                    help="keep type axes where every compared run solved zero tasks")
-    ap.add_argument("--fill-alpha", type=float, default=0.10,
-                    help="polygon fill alpha; use 0 for no fill")
+                    help="keep zero-pass type axes; retained for compatibility and now the default")
+    ap.add_argument("--fill-alpha", type=float,
+                    help="override nonzero polygon fill alpha; use 0 or --no-shading for no fill")
     ap.add_argument("--no-shading", "--no-fill", action="store_true",
                     help="draw only radar outlines, with no filled polygon shading")
     ap.add_argument("--label-font-size", type=int, default=DEFAULT_LABEL_FONT_SIZE,
@@ -347,7 +488,7 @@ def main() -> int:
         sys.exit("font sizes and --label-width must be positive integers")
     if args.label_pad < 0:
         sys.exit("--label-pad must be >= 0")
-    if args.fill_alpha < 0:
+    if args.fill_alpha is not None and args.fill_alpha < 0:
         sys.exit("--fill-alpha must be >= 0")
 
     taxonomy = load_taxonomy(args.taxonomy)
@@ -359,20 +500,20 @@ def main() -> int:
     types = select_types(
         aggs,
         min_support=args.min_support,
-        keep_zero_axes=args.keep_zero_axes,
+        keep_zero_axes=args.keep_zero_axes or not args.drop_zero_axes,
         sort=args.sort,
     )
 
     print_table(types, labels, aggs)
+    candidate_types = CANONICAL_TYPES if args.sort == "fixed" else sorted(set().union(*(set(a) for a in aggs)))
     removed = sorted(
-        t for t in set().union(*(set(a) for a in aggs))
+        t for t in candidate_types
         if t not in types and sum(a.get(t, {}).get("passed", 0) for a in aggs) == 0
     )
-    if removed and not args.keep_zero_axes:
+    if removed and args.drop_zero_axes and not args.keep_zero_axes:
         print(f"\nremoved zero-pass axes ({len(removed)}): {', '.join(removed)}")
 
     out = args.out or default_out(args.results[0])
-    fill_alpha = 0.0 if args.no_shading else args.fill_alpha
     plot_radar(
         types,
         aggs,
@@ -380,7 +521,8 @@ def main() -> int:
         labels,
         out,
         title=args.title,
-        fill_alpha=fill_alpha,
+        fill_alpha=args.fill_alpha,
+        no_shading=args.no_shading,
         label_font_size=args.label_font_size,
         radial_font_size=args.radial_font_size,
         legend_font_size=args.legend_font_size,

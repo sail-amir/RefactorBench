@@ -163,14 +163,14 @@ python scripts/report.py runs/*/scores.json
 # pass rate + loop/control metrics
 python scripts/compare_agent_control.py runs/*/scores.json
 
-# radar chart by refactoring type; all-zero solved type axes are dropped by default
+# radar chart by refactoring type; fixed 13-type order, frontier/hero/baseline styling
 python scripts/plot_radar_by_type.py \
-  runs/pangu-old__descriptive/scores.json \
-  runs/pangu-new__descriptive/scores.json \
-  runs/pangu-mini__descriptive/scores.json \
-  --labels old-swe new-swe mini \
-  --label-font-size 11 --label-pad 32 --no-shading \
-  --out runs/pangu-radar-by-type.png
+  runs/glm-5-1__descriptive/scores.json \
+  runs/pangu-7b-5k-refactoring-mini-full__descriptive/scores.json \
+  runs/pangu-35b__descriptive/scores.json \
+  runs/pangu-7b__descriptive/scores.json \
+  --labels GLM-5.1 pangu-7b-refactoring pangu-35b pangu-7b \
+  --out runs/refactorbench_radar.png
 ```
 
 ### 9. Inspect a run (status + health)
