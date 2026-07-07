@@ -83,7 +83,7 @@ ROLE_STYLE = {
     "frontier": dict(color="#1A237E", lw=2.2, ls=(0, (6, 4)), fill=0.0, z=5),
     "hero": dict(color="#1B7F3B", lw=2.6, ls="-", fill=0.40, z=4),
     "baseline35": dict(color="#D98A29", lw=2.2, ls="-", fill=0.07, z=2),
-    "baseline7": dict(color="#8E5FB0", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
+    "baseline7": dict(color="#C44E52", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
 }
 FALLBACK_COLORS = ["#4E79A7", "#59A14F", "#E15759", "#76B7B2", "#F28E2B", "#B07AA1"]
 
