@@ -16,7 +16,8 @@ Usage:
       --out runs/pangu-mini-radar.png
 
     python scripts/plot_radar_by_type.py runs/runA runs/runB runs/runC \
-      --labels A B C --sort support --min-support 3
+      --labels A B C --sort support --min-support 3 \
+      --label-font-size 12 --label-pad 36
 """
 from __future__ import annotations
 
@@ -31,6 +32,12 @@ from typing import Any
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPTS_DIR)
 DEFAULT_TAXONOMY = os.path.join(REPO_ROOT, "analysis", "descriptive_task_types.jsonl")
+DEFAULT_LABEL_FONT_SIZE = 10
+DEFAULT_RADIAL_FONT_SIZE = 9
+DEFAULT_LEGEND_FONT_SIZE = 10
+DEFAULT_TITLE_FONT_SIZE = 14
+DEFAULT_LABEL_PAD = 28
+DEFAULT_LABEL_WIDTH = 16
 
 
 def load_scores(path: str) -> tuple[dict[str, bool], dict[str, Any]]:
@@ -146,7 +153,11 @@ def wrap_label(text: str, width: int = 18) -> str:
     return "\n".join(lines)
 
 
-def axis_labels(types: list[str], aggs: list[dict[str, dict[str, int]]]) -> list[str]:
+def axis_labels(
+    types: list[str],
+    aggs: list[dict[str, dict[str, int]]],
+    label_width: int,
+) -> list[str]:
     labels = []
     for typ in types:
         supports = [a.get(typ, {}).get("total", 0) for a in aggs]
@@ -157,7 +168,7 @@ def axis_labels(types: list[str], aggs: list[dict[str, dict[str, int]]]) -> list
             support = f"n={nonzero[0]}"
         else:
             support = f"n={min(nonzero)}-{max(nonzero)}"
-        labels.append(f"{wrap_label(typ)}\n{support}")
+        labels.append(f"{wrap_label(typ, width=label_width)}\n{support}")
     return labels
 
 
@@ -168,6 +179,25 @@ def values_for(agg: dict[str, dict[str, int]], types: list[str]) -> list[float]:
         total = item.get("total", 0)
         vals.append((item.get("passed", 0) / total) if total else 0.0)
     return vals
+
+
+def align_axis_labels(ax: Any, angles: list[float]) -> None:
+    for label, theta in zip(ax.get_xticklabels(), angles):
+        display_theta = math.pi / 2 - theta
+        x = math.cos(display_theta)
+        y = math.sin(display_theta)
+        if x > 0.20:
+            label.set_horizontalalignment("left")
+        elif x < -0.20:
+            label.set_horizontalalignment("right")
+        else:
+            label.set_horizontalalignment("center")
+        if y > 0.70:
+            label.set_verticalalignment("bottom")
+        elif y < -0.70:
+            label.set_verticalalignment("top")
+        else:
+            label.set_verticalalignment("center")
 
 
 def print_table(types: list[str], labels: list[str], aggs: list[dict[str, dict[str, int]]]) -> None:
@@ -193,6 +223,12 @@ def plot_radar(
     out: str,
     title: str | None,
     fill_alpha: float,
+    label_font_size: int,
+    radial_font_size: int,
+    legend_font_size: int,
+    title_font_size: int,
+    label_pad: int,
+    label_width: int,
 ) -> None:
     try:
         import matplotlib
@@ -207,7 +243,10 @@ def plot_radar(
     angles = [2 * math.pi * i / n_axes for i in range(n_axes)]
     angles_closed = angles + [angles[0]]
 
-    fig_size = max(7.5, min(14.0, 5.5 + n_axes * 0.28))
+    fig_size = max(
+        9.0,
+        min(16.0, 7.0 + n_axes * 0.35 + max(0, label_font_size - 10) * 0.2),
+    )
     fig = plt.figure(figsize=(fig_size, fig_size))
     ax = fig.add_subplot(111, polar=True)
     ax.set_theta_offset(math.pi / 2)
@@ -228,15 +267,23 @@ def plot_radar(
 
     ax.set_ylim(0, 1)
     ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
-    ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], fontsize=8)
+    ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], fontsize=radial_font_size)
+    ax.set_rlabel_position(90)
     ax.set_xticks(angles)
-    ax.set_xticklabels(axis_labels(types, aggs), fontsize=8)
+    ax.set_xticklabels(axis_labels(types, aggs, label_width=label_width), fontsize=label_font_size)
+    ax.tick_params(axis="x", pad=label_pad)
+    align_axis_labels(ax, angles)
     ax.grid(True, linestyle=":", alpha=0.6)
 
     if title is None:
         title = "RefactorBench Success Rate By Refactoring Type"
-    ax.set_title(title, y=1.10, fontsize=12)
-    ax.legend(loc="upper right", bbox_to_anchor=(1.24, 1.16), fontsize=9, framealpha=0.9)
+    ax.set_title(title, y=1.14, fontsize=title_font_size)
+    ax.legend(
+        loc="upper right",
+        bbox_to_anchor=(1.27, 1.17),
+        fontsize=legend_font_size,
+        framealpha=0.9,
+    )
     fig.tight_layout()
     fig.savefig(out, dpi=150, bbox_inches="tight")
     print(f"wrote {out}")
@@ -269,6 +316,18 @@ def main() -> int:
                     help="keep type axes where every compared run solved zero tasks")
     ap.add_argument("--fill-alpha", type=float, default=0.10,
                     help="polygon fill alpha; use 0 for no fill")
+    ap.add_argument("--label-font-size", type=int, default=DEFAULT_LABEL_FONT_SIZE,
+                    help=f"refactoring-type label font size (default {DEFAULT_LABEL_FONT_SIZE})")
+    ap.add_argument("--radial-font-size", type=int, default=DEFAULT_RADIAL_FONT_SIZE,
+                    help=f"radial percent label font size (default {DEFAULT_RADIAL_FONT_SIZE})")
+    ap.add_argument("--legend-font-size", type=int, default=DEFAULT_LEGEND_FONT_SIZE,
+                    help=f"legend font size (default {DEFAULT_LEGEND_FONT_SIZE})")
+    ap.add_argument("--title-font-size", type=int, default=DEFAULT_TITLE_FONT_SIZE,
+                    help=f"title font size (default {DEFAULT_TITLE_FONT_SIZE})")
+    ap.add_argument("--label-pad", type=int, default=DEFAULT_LABEL_PAD,
+                    help=f"outward padding for refactoring-type labels (default {DEFAULT_LABEL_PAD})")
+    ap.add_argument("--label-width", type=int, default=DEFAULT_LABEL_WIDTH,
+                    help=f"wrap refactoring-type labels after this many chars (default {DEFAULT_LABEL_WIDTH})")
     ap.add_argument("--title", help="override chart title")
     args = ap.parse_args()
 
@@ -276,6 +335,16 @@ def main() -> int:
         print("WARNING: radar chart is most useful with two or more runs", file=sys.stderr)
     if args.labels and len(args.labels) != len(args.results):
         sys.exit("--labels must provide exactly one label per result")
+    if min(
+        args.label_font_size,
+        args.radial_font_size,
+        args.legend_font_size,
+        args.title_font_size,
+        args.label_width,
+    ) <= 0:
+        sys.exit("font sizes and --label-width must be positive integers")
+    if args.label_pad < 0:
+        sys.exit("--label-pad must be >= 0")
 
     taxonomy = load_taxonomy(args.taxonomy)
     scored_and_meta = [load_scores(path) for path in args.results]
@@ -299,7 +368,21 @@ def main() -> int:
         print(f"\nremoved zero-pass axes ({len(removed)}): {', '.join(removed)}")
 
     out = args.out or default_out(args.results[0])
-    plot_radar(types, aggs, metas, labels, out, title=args.title, fill_alpha=args.fill_alpha)
+    plot_radar(
+        types,
+        aggs,
+        metas,
+        labels,
+        out,
+        title=args.title,
+        fill_alpha=args.fill_alpha,
+        label_font_size=args.label_font_size,
+        radial_font_size=args.radial_font_size,
+        legend_font_size=args.legend_font_size,
+        title_font_size=args.title_font_size,
+        label_pad=args.label_pad,
+        label_width=args.label_width,
+    )
     return 0
 
 

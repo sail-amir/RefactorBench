@@ -169,6 +169,7 @@ python scripts/plot_radar_by_type.py \
   runs/pangu-new__descriptive/scores.json \
   runs/pangu-mini__descriptive/scores.json \
   --labels old-swe new-swe mini \
+  --label-font-size 11 --label-pad 32 \
   --out runs/pangu-radar-by-type.png
 ```
 
