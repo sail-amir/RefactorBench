@@ -48,6 +48,8 @@ Harness lives in `scripts/`; bootstrap with `setup.sh` (see `SETUP.md`).
 - `compare_agent_control.py <run...>` — pass rate plus duplicate-action, empty-response,
   stop-reason, call, token, and loop metrics for SWE-agent/tool-call/Mini comparisons.
 - `plot_success_by_type.py <run> [--compare <run2>]` — success rate per Fowler type.
+- `plot_radar_by_type.py <run...>` — multi-run radar chart by Fowler type; drops
+  zero-pass type axes by default.
 - `plot_run_health.py <run> [--compare]` — step-count box plot + exit-status mix.
 - `analysis/descriptive_task_types.jsonl` — the 100 tasks labeled by Fowler refactoring type.
 
