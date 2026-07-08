@@ -72,10 +72,10 @@
   <text x="125" y="582" class="small">2. Runtime code raises PathTraversal</text>
   <text x="125" y="612" class="small">3. Existing official test file was updated</text>
 
-  <rect x="125" y="645" width="535" height="92" class="green-code"/>
-  <text x="150" y="675" class="mono-small">diff --git a/tests/utils_tests/test_os_utils.py</text>
-  <text x="150" y="704" class="mono-small">- from django.core.exceptions import SuspiciousFileOperation</text>
-  <text x="150" y="729" class="mono-small">+ from django.core.exceptions import PathTraversal</text>
+  <rect x="105" y="645" width="585" height="92" class="green-code"/>
+  <text x="130" y="675" class="mono-small">diff --git a/tests/utils_tests/test_os_utils.py</text>
+  <text x="130" y="704" class="mono-small">- from django.core.exceptions import SuspiciousFileOperation</text>
+  <text x="130" y="729" class="mono-small">+ from django.core.exceptions import PathTraversal</text>
 
   <rect x="125" y="760" width="535" height="44" rx="22" fill="#dff4e6"/>
   <text x="392" y="789" class="pill pass" text-anchor="middle">RESULT: PASS  |  reason: ok</text>
@@ -85,10 +85,10 @@
   <text x="920" y="582" class="small">2. Runtime code raises PathTraversal</text>
   <text x="920" y="612" class="small">3. Added ad-hoc root test_*.py scripts instead</text>
 
-  <rect x="920" y="645" width="535" height="92" class="red-code"/>
-  <text x="945" y="675" class="mono-small">missing diff for:</text>
-  <text x="945" y="704" class="mono-small">tests/utils_tests/test_os_utils.py</text>
-  <text x="945" y="729" class="mono-small">PathTraversal import not found by checker</text>
+  <rect x="905" y="645" width="585" height="92" class="red-code"/>
+  <text x="930" y="675" class="mono-small">missing diff for:</text>
+  <text x="930" y="704" class="mono-small">tests/utils_tests/test_os_utils.py</text>
+  <text x="930" y="729" class="mono-small">PathTraversal import not found by checker</text>
 
   <rect x="920" y="760" width="535" height="44" rx="22" fill="#ffe0dc"/>
   <text x="1187" y="789" class="pill fail" text-anchor="middle">RESULT: FAIL  |  reason: checker assertion</text>
