@@ -244,7 +244,7 @@ def draw_axis_labels(
     label_pad: int,
 ) -> None:
     # Keep labels outside the 100% boundary without pushing them past the canvas.
-    label_radius = 100 + max(label_pad, int(round(label_font_size * 0.85)))
+    label_radius = 100 + max(label_pad, int(round(label_font_size * 0.60)))
     for theta, label in zip(angles, labels):
         ha, va = axis_label_alignment(theta)
         ax.text(
