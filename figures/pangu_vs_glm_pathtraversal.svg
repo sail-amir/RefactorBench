@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
-  <title id="title">Why Pangu passed and GLM failed on the PathTraversal task</title>
-  <desc id="desc">Two-column comparison showing that Pangu updated the required Django test file while GLM missed that file and failed the official checker.</desc>
+  <title id="title">Task: Introduce PathTraversal exception</title>
+  <desc id="desc">Two-column comparison for the PathTraversal task showing that Pangu updated the required Django test file while GLM missed that file and failed the official checker.</desc>
   <defs>
     <style>
       .bg { fill: #ffffff; }
@@ -41,8 +41,8 @@
 
   <rect class="bg" width="1600" height="1000"/>
 
-  <text x="800" y="70" class="title" text-anchor="middle">Why Pangu passed while GLM failed</text>
-  <text x="800" y="110" class="subtitle" text-anchor="middle">RefactorBench Extract Class case: new-path-traversal-exception-task</text>
+  <text x="800" y="70" class="title" text-anchor="middle">Task: Introduce PathTraversal exception</text>
+  <text x="800" y="110" class="subtitle" text-anchor="middle">Django Extract Class case: new-path-traversal-exception-task</text>
 
   <rect x="445" y="150" width="710" height="185" class="checker-card shadow"/>
   <text x="800" y="190" class="section" text-anchor="middle">Official checker requirement</text>
@@ -94,8 +94,8 @@
   <path d="M392 825 C450 890, 650 902, 800 902" class="green-line" marker-end="url(#arrow-green)"/>
   <path d="M1187 825 C1125 890, 950 902, 820 902" class="red-line dash" marker-end="url(#arrow-red)"/>
 
-  <rect x="380" y="875" width="840" height="82" class="card"/>
-  <text x="800" y="907" class="section" text-anchor="middle">Takeaway</text>
-  <text x="800" y="937" class="body" text-anchor="middle">Pangu solved the refactor end-to-end. GLM made much of the runtime change,</text>
-  <text x="800" y="963" class="body" text-anchor="middle">but failed because it missed the existing file the official checker validates.</text>
+  <rect x="380" y="858" width="840" height="112" class="card"/>
+  <text x="800" y="890" class="section" text-anchor="middle">Takeaway</text>
+  <text x="800" y="925" class="body" text-anchor="middle">Pangu solved the refactor end-to-end. GLM made much of the runtime change,</text>
+  <text x="800" y="952" class="body" text-anchor="middle">but failed because it missed the existing file the official checker validates.</text>
 </svg>
