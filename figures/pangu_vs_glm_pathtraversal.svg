@@ -1,11 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
   <title id="title">Task: Introduce PathTraversal exception</title>
-  <desc id="desc">Two-column comparison for the PathTraversal task showing that Pangu updated the required Django test file while GLM missed that file and failed the official checker.</desc>
+  <desc id="desc">Two-column comparison for the task to create a PathTraversal exception for unsafe path traversal and update code/tests that previously used SuspiciousFileOperation.</desc>
   <defs>
     <style>
       .bg { fill: #ffffff; }
       .title { font: 700 44px Arial, Helvetica, sans-serif; fill: #151515; }
       .subtitle { font: 400 22px Arial, Helvetica, sans-serif; fill: #4b5563; }
+      .taskdesc { font: 400 19px Arial, Helvetica, sans-serif; fill: #374151; }
       .section { font: 700 25px Arial, Helvetica, sans-serif; fill: #111827; }
       .body { font: 400 20px Arial, Helvetica, sans-serif; fill: #374151; }
       .small { font: 400 17px Arial, Helvetica, sans-serif; fill: #4b5563; }
@@ -43,6 +44,7 @@
 
   <text x="800" y="70" class="title" text-anchor="middle">Task: Introduce PathTraversal exception</text>
   <text x="800" y="110" class="subtitle" text-anchor="middle">Django Extract Class case: new-path-traversal-exception-task</text>
+  <text x="800" y="137" class="taskdesc" text-anchor="middle">Create a PathTraversal exception for unsafe path traversal and update runtime code plus tests to use it.</text>
 
   <rect x="445" y="150" width="710" height="185" class="checker-card shadow"/>
   <text x="800" y="190" class="section" text-anchor="middle">Official checker requirement</text>
