@@ -41,6 +41,7 @@ DEFAULT_LABEL_PAD = 20
 DEFAULT_LABEL_WIDTH = 16
 DEFAULT_LEGEND_LABEL_WIDTH = 16
 DEFAULT_DPI = 200
+RADAR_AXES_RECT = [0.19, 0.235, 0.62, 0.575714]
 
 CANONICAL_TYPES = [
     "Move Function",
@@ -242,8 +243,8 @@ def draw_axis_labels(
     label_font_size: int,
     label_pad: int,
 ) -> None:
-    # Keep labels outside the 100% boundary even when a small --label-pad is passed.
-    label_radius = 100 + max(label_pad, int(round(label_font_size * 1.25)))
+    # Keep labels outside the 100% boundary without pushing them past the canvas.
+    label_radius = 100 + max(label_pad, int(round(label_font_size * 0.85)))
     for theta, label in zip(angles, labels):
         ha, va = axis_label_alignment(theta)
         ax.text(
@@ -383,7 +384,8 @@ def plot_radar(
     angles_closed = angles + [angles[0]]
 
     fig = plt.figure(figsize=(13, 14), dpi=DEFAULT_DPI)
-    ax = fig.add_axes([0.13, 0.17, 0.74, 0.687], polar=True)
+    # The box is square in physical units: 0.62 * 13in == 0.575714 * 14in.
+    ax = fig.add_axes(RADAR_AXES_RECT, polar=True)
     ax.set_theta_offset(math.pi / 2)
     ax.set_theta_direction(-1)
 
