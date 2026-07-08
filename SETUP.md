@@ -164,6 +164,9 @@ python scripts/report.py runs/*/scores.json
 python scripts/compare_agent_control.py runs/*/scores.json
 
 # radar chart by refactoring type; fixed 13-type order, frontier/hero/baseline styling
+python scripts/plot_radar_by_type.py --config scripts/radar_config.example.yaml
+
+# or pass runs directly
 python scripts/plot_radar_by_type.py \
   runs/glm-5-1__descriptive/scores.json \
   runs/pangu-7b-5k-refactoring-mini-full__descriptive/scores.json \

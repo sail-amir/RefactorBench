@@ -18,6 +18,8 @@ Usage:
     python scripts/plot_radar_by_type.py runs/runA runs/runB runs/runC \
       --labels GLM-5.1 pangu-7b-refactoring pangu-35b pangu-7b \
       --out runs/refactorbench_radar.png
+
+    python scripts/plot_radar_by_type.py --config scripts/radar_config.example.yaml
 """
 from __future__ import annotations
 
@@ -91,6 +93,29 @@ ROLE_STYLE = {
     "baseline7": dict(color="#B22234", lw=2.2, ls=(0, (4, 3)), fill=0.07, z=2),
 }
 FALLBACK_COLORS = ["#4E79A7", "#59A14F", "#E15759", "#76B7B2", "#F28E2B", "#B07AA1"]
+CONFIG_KEYS = {
+    "taxonomy",
+    "out",
+    "sort",
+    "min_support",
+    "drop_zero_axes",
+    "keep_zero_axes",
+    "fill_alpha",
+    "no_shading",
+    "label_font_size",
+    "radial_font_size",
+    "legend_font_size",
+    "no_legend",
+    "title_font_size",
+    "label_pad",
+    "label_width",
+    "legend_label_width",
+    "fig_width",
+    "fig_height",
+    "dpi",
+    "axes_rect",
+    "title",
+}
 
 
 def load_scores(path: str) -> tuple[dict[str, bool], dict[str, Any]]:
@@ -127,6 +152,69 @@ def load_taxonomy(path: str) -> dict[str, list[str]]:
         row = json.loads(line)
         out[row["id"]] = list(row.get("types") or [])
     return out
+
+
+def load_yaml_config(path: str) -> dict[str, Any]:
+    try:
+        import yaml
+    except ModuleNotFoundError:
+        sys.exit("PyYAML is required for --config; install it with: python -m pip install pyyaml")
+    if not os.path.isfile(path):
+        sys.exit(f"radar config not found: {path}")
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        sys.exit("--config YAML must contain a mapping at the top level")
+    return data
+
+
+def normalize_run_spec(row: Any, idx: int) -> dict[str, Any]:
+    if isinstance(row, str):
+        return {"path": row}
+    if not isinstance(row, dict):
+        sys.exit(f"runs[{idx}] must be a path string or mapping")
+    spec = dict(row)
+    if "path" not in spec:
+        for key in ("run", "result", "scores"):
+            if key in spec:
+                spec["path"] = spec[key]
+                break
+    if not spec.get("path"):
+        sys.exit(f"runs[{idx}] is missing path")
+    return spec
+
+
+def load_run_specs(config: dict[str, Any] | None, results: list[str], labels: list[str] | None) -> list[dict[str, Any]]:
+    if config and config.get("runs") is not None:
+        if results:
+            sys.exit("use either --config runs or positional run paths, not both")
+        rows = config["runs"]
+        if not isinstance(rows, list) or not rows:
+            sys.exit("--config runs must be a non-empty list")
+        specs = [normalize_run_spec(row, i) for i, row in enumerate(rows)]
+    else:
+        specs = [{"path": p} for p in results]
+
+    if labels:
+        if len(labels) != len(specs):
+            sys.exit("--labels must provide exactly one label per result")
+        for spec, label in zip(specs, labels):
+            spec["label"] = label
+    return specs
+
+
+def cli_option_was_set(argv: list[str], name: str) -> bool:
+    option = "--" + name.replace("_", "-")
+    return any(arg == option or arg.startswith(option + "=") for arg in argv)
+
+
+def apply_config_defaults(args: argparse.Namespace, config: dict[str, Any] | None, argv: list[str]) -> None:
+    if not config:
+        return
+    for key in CONFIG_KEYS:
+        yaml_key = key if key in config else key.replace("_", "-")
+        if yaml_key in config and not cli_option_was_set(argv, key):
+            setattr(args, key, config[yaml_key])
 
 
 def aggregate(scored: dict[str, bool], taxonomy: dict[str, list[str]]) -> dict[str, dict[str, int]]:
@@ -292,7 +380,69 @@ def normalize_pass_rate(rate: Any) -> float | None:
     return value * 100.0 if value <= 1.0 else value
 
 
-def style_for_series(role: str | None, idx: int, fill_alpha: float | None, no_shading: bool) -> dict[str, Any]:
+def parse_line_style(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        aliases = {
+            "solid": "-",
+            "-": "-",
+            "dashed": "--",
+            "dash": "--",
+            "--": "--",
+            "dotted": ":",
+            ":": ":",
+            "dashdot": "-.",
+            "-.": "-.",
+        }
+        if value in aliases:
+            return aliases[value]
+        if "," in value:
+            try:
+                return (0, tuple(float(x.strip()) for x in value.split(",") if x.strip()))
+            except ValueError:
+                pass
+        return value
+    if isinstance(value, list):
+        if len(value) == 2 and isinstance(value[1], list):
+            return (value[0], tuple(value[1]))
+        return (0, tuple(value))
+    return value
+
+
+def apply_style_overrides(style: dict[str, Any], overrides: dict[str, Any] | None) -> dict[str, Any]:
+    if not overrides:
+        return style
+    out = dict(style)
+    mapping = {
+        "color": "color",
+        "lw": "lw",
+        "line_width": "lw",
+        "linewidth": "lw",
+        "ls": "ls",
+        "line_style": "ls",
+        "linestyle": "ls",
+        "fill": "fill",
+        "fill_alpha": "fill",
+        "z": "z",
+        "zorder": "z",
+    }
+    for key, value in overrides.items():
+        if key not in mapping:
+            print(f"WARNING: ignoring unknown style key {key!r}", file=sys.stderr)
+            continue
+        target = mapping[key]
+        out[target] = parse_line_style(value) if target == "ls" else value
+    return out
+
+
+def style_for_series(
+    role: str | None,
+    idx: int,
+    fill_alpha: float | None,
+    no_shading: bool,
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if role in ROLE_STYLE:
         style = dict(ROLE_STYLE[role])
     else:
@@ -303,6 +453,7 @@ def style_for_series(role: str | None, idx: int, fill_alpha: float | None, no_sh
             fill=0.07,
             z=3,
         )
+    style = apply_style_overrides(style, overrides)
     if no_shading:
         style["fill"] = 0.0
     elif fill_alpha is not None and style["fill"] > 0:
@@ -322,25 +473,48 @@ def wrap_legend_name(name: str, width: int) -> str:
     return "\n".join(parts) if parts else name
 
 
-def legend_label(role: str | None, label: str, meta: dict[str, Any], legend_label_width: int) -> str:
-    name = ROLE_DISPLAY.get(role or "", label)
+def legend_label(
+    role: str | None,
+    label: str,
+    meta: dict[str, Any],
+    legend_label_width: int,
+    legend_name: str | None = None,
+    legend_text: str | None = None,
+    overall: float | None = None,
+) -> str:
+    if legend_text:
+        return legend_text
+    name = legend_name or ROLE_DISPLAY.get(role or "", label)
     name = wrap_legend_name(name, legend_label_width)
-    percent = normalize_pass_rate(meta.get("pass_rate"))
+    percent = normalize_pass_rate(overall if overall is not None else meta.get("pass_rate"))
     if percent is None:
         return name
     return f"{name}\n{percent:.0f}%"
 
 
 def legend_sort_key(item: dict[str, Any]) -> tuple[int, int]:
+    if item.get("legend_order") is not None:
+        return (int(item["legend_order"]), item["idx"])
     role = item["role"]
     if role in ROLE_ORDER:
         return (ROLE_ORDER.index(role), item["idx"])
     return (len(ROLE_ORDER), item["idx"])
 
 
-def parse_axes_rect(raw: str | None) -> list[float] | None:
+def parse_axes_rect(raw: Any) -> list[float] | None:
     if not raw:
         return None
+    if isinstance(raw, list):
+        if len(raw) != 4:
+            sys.exit("axes_rect must contain four floats: left,bottom,width,height")
+        try:
+            rect = [float(p) for p in raw]
+        except ValueError:
+            sys.exit("axes_rect must contain four floats: left,bottom,width,height")
+        left, bottom, width, height = rect
+        if min(rect) < 0 or width <= 0 or height <= 0 or left + width > 1 or bottom + height > 1:
+            sys.exit("axes_rect values must fit inside the figure: left,bottom,width,height")
+        return rect
     parts = [p.strip() for p in raw.split(",")]
     if len(parts) != 4:
         sys.exit("--axes-rect must be four comma-separated floats: left,bottom,width,height")
@@ -388,6 +562,7 @@ def plot_radar(
     aggs: list[dict[str, dict[str, int]]],
     metas: list[dict[str, Any]],
     labels: list[str],
+    run_specs: list[dict[str, Any]],
     out: str,
     title: str | None,
     fill_alpha: float | None,
@@ -427,9 +602,15 @@ def plot_radar(
     ax.set_theta_direction(-1)
 
     series = []
-    for idx, (agg, label, meta) in enumerate(zip(aggs, labels, metas)):
-        role = role_for_label(label)
-        style = style_for_series(role, idx, fill_alpha=fill_alpha, no_shading=no_shading)
+    for idx, (agg, label, meta, spec) in enumerate(zip(aggs, labels, metas, run_specs)):
+        role = spec.get("role") or role_for_label(label)
+        style = style_for_series(
+            role,
+            idx,
+            fill_alpha=fill_alpha,
+            no_shading=no_shading,
+            overrides=spec.get("style"),
+        )
         series.append(
             dict(
                 idx=idx,
@@ -438,7 +619,16 @@ def plot_radar(
                 meta=meta,
                 role=role,
                 style=style,
-                legend=legend_label(role, label, meta, legend_label_width=legend_label_width),
+                legend=legend_label(
+                    role,
+                    label,
+                    meta,
+                    legend_label_width=legend_label_width,
+                    legend_name=spec.get("legend_name"),
+                    legend_text=spec.get("legend_label"),
+                    overall=spec.get("overall"),
+                ),
+                legend_order=spec.get("legend_order"),
             )
         )
 
@@ -543,8 +733,10 @@ def default_out(first_result: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("results", nargs="+",
+    ap.add_argument("results", nargs="*",
                     help="run dirs or scores.json paths; pass two or more for comparison")
+    ap.add_argument("--config",
+                    help="YAML file with chart settings and per-run style configuration")
     ap.add_argument("--labels", nargs="+",
                     help="legend labels, one per result (default: run slugs)")
     ap.add_argument("--taxonomy", default=DEFAULT_TAXONOMY,
@@ -589,11 +781,14 @@ def main() -> int:
                     help="optional polar axes box as left,bottom,width,height figure fractions")
     ap.add_argument("--title", help="override chart title")
     args = ap.parse_args()
+    config = load_yaml_config(args.config) if args.config else None
+    apply_config_defaults(args, config, sys.argv[1:])
+    run_specs = load_run_specs(config, args.results, args.labels)
 
-    if len(args.results) < 2:
+    if not run_specs:
+        sys.exit("provide run paths or --config with a non-empty runs list")
+    if len(run_specs) < 2:
         print("WARNING: radar chart is most useful with two or more runs", file=sys.stderr)
-    if args.labels and len(args.labels) != len(args.results):
-        sys.exit("--labels must provide exactly one label per result")
     if min(
         args.label_font_size,
         args.radial_font_size,
@@ -614,10 +809,10 @@ def main() -> int:
     axes_rect = parse_axes_rect(args.axes_rect)
 
     taxonomy = load_taxonomy(args.taxonomy)
-    scored_and_meta = [load_scores(path) for path in args.results]
+    scored_and_meta = [load_scores(str(spec["path"])) for spec in run_specs]
     scored = [x[0] for x in scored_and_meta]
     metas = [x[1] for x in scored_and_meta]
-    labels = args.labels or [m["slug"] for m in metas]
+    labels = [str(spec.get("label") or meta["slug"]) for spec, meta in zip(run_specs, metas)]
     aggs = [aggregate(s, taxonomy) for s in scored]
     types = select_types(
         aggs,
@@ -635,12 +830,13 @@ def main() -> int:
     if removed and args.drop_zero_axes and not args.keep_zero_axes:
         print(f"\nremoved zero-pass axes ({len(removed)}): {', '.join(removed)}")
 
-    out = args.out or default_out(args.results[0])
+    out = args.out or default_out(str(run_specs[0]["path"]))
     plot_radar(
         types,
         aggs,
         metas,
         labels,
+        run_specs,
         out,
         title=args.title,
         fill_alpha=args.fill_alpha,
