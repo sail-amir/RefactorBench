@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
   <title id="title">Task: Introduce PathTraversal exception</title>
-  <desc id="desc">Two-column comparison for the task to create a PathTraversal exception for unsafe path traversal and update code/tests that previously used SuspiciousFileOperation.</desc>
+  <desc id="desc">Two-column comparison showing why Pangu-7B passed and GLM-5.1 failed the task to extract a dedicated PathTraversal exception class from generic file-operation error handling and update Django storage code, docs, and tests to use it.</desc>
   <defs>
     <style>
       .bg { fill: #ffffff; }
@@ -47,7 +47,7 @@
   <text x="800" y="70" class="title" text-anchor="middle">Task: Introduce PathTraversal exception</text>
   <rect x="1285" y="42" width="205" height="52" class="badge-box"/>
   <text x="1387.5" y="75" class="badge-text" text-anchor="middle">Extract Class</text>
-  <text x="800" y="120" class="taskdesc" text-anchor="middle">Create a PathTraversal exception for unsafe path traversal and update runtime code plus tests to use it.</text>
+  <text x="800" y="120" class="taskdesc" text-anchor="middle">Extract a dedicated PathTraversal exception class, then update Django storage code, docs, and tests to use it.</text>
 
   <rect x="445" y="150" width="710" height="185" class="checker-card shadow"/>
   <text x="800" y="190" class="section" text-anchor="middle">Official checker requirement</text>
@@ -62,13 +62,13 @@
   <rect x="90" y="395" width="625" height="430" class="pangu-card shadow"/>
   <rect x="885" y="395" width="625" height="430" class="glm-card shadow"/>
 
-  <rect x="125" y="430" width="150" height="46" rx="23" fill="#1b7f3b"/>
-  <text x="200" y="461" class="pill" text-anchor="middle" fill="#ffffff">PANGU</text>
-  <text x="300" y="461" class="section">passed</text>
+  <rect x="125" y="430" width="175" height="46" rx="23" fill="#1b7f3b"/>
+  <text x="212.5" y="461" class="pill" text-anchor="middle" fill="#ffffff">Pangu-7B</text>
+  <text x="325" y="461" class="section">passed</text>
 
-  <rect x="920" y="430" width="130" height="46" rx="23" fill="#c43e2f"/>
-  <text x="985" y="461" class="pill" text-anchor="middle" fill="#ffffff">GLM</text>
-  <text x="1075" y="461" class="section">failed</text>
+  <rect x="920" y="430" width="160" height="46" rx="23" fill="#c43e2f"/>
+  <text x="1000" y="461" class="pill" text-anchor="middle" fill="#ffffff">GLM-5.1</text>
+  <text x="1105" y="461" class="section">failed</text>
 
   <text x="125" y="515" class="body">Patch applied and covered all required surfaces:</text>
   <text x="125" y="552" class="small">1. Added PathTraversal exception</text>
@@ -101,6 +101,6 @@
 
   <rect x="380" y="858" width="840" height="112" class="card"/>
   <text x="800" y="890" class="section" text-anchor="middle">Takeaway</text>
-  <text x="800" y="925" class="body" text-anchor="middle">Pangu solved the refactor end-to-end. GLM made much of the runtime change,</text>
+  <text x="800" y="925" class="body" text-anchor="middle">Pangu-7B solved the refactor end-to-end. GLM-5.1 made much of the runtime change,</text>
   <text x="800" y="952" class="body" text-anchor="middle">but failed because it missed the existing file the official checker validates.</text>
 </svg>
