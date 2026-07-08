@@ -395,6 +395,7 @@ def plot_radar(
     label_font_size: int,
     radial_font_size: int,
     legend_font_size: int,
+    no_legend: bool,
     title_font_size: int,
     label_pad: int,
     label_width: int,
@@ -484,47 +485,48 @@ def plot_radar(
     if title:
         ax.set_title(title, y=1.14, fontsize=title_font_size)
 
-    handles = []
-    legend_labels = []
-    legend_items = sorted(series, key=legend_sort_key)
-    for item in legend_items:
-        style = item["style"]
-        if style["fill"] >= 0.3:
-            handle = Patch(
-                facecolor=style["color"],
-                alpha=0.55,
-                edgecolor=style["color"],
-                linewidth=style["lw"],
-            )
-        else:
-            handle = Line2D(
-                [0],
-                [0],
-                color=style["color"],
-                linewidth=style["lw"] + 0.4,
-                linestyle=style["ls"],
-            )
-        handles.append(handle)
-        legend_labels.append(item["legend"])
+    if not no_legend:
+        handles = []
+        legend_labels = []
+        legend_items = sorted(series, key=legend_sort_key)
+        for item in legend_items:
+            style = item["style"]
+            if style["fill"] >= 0.3:
+                handle = Patch(
+                    facecolor=style["color"],
+                    alpha=0.55,
+                    edgecolor=style["color"],
+                    linewidth=style["lw"],
+                )
+            else:
+                handle = Line2D(
+                    [0],
+                    [0],
+                    color=style["color"],
+                    linewidth=style["lw"] + 0.4,
+                    linestyle=style["ls"],
+                )
+            handles.append(handle)
+            legend_labels.append(item["legend"])
 
-    legend = fig.legend(
-        handles,
-        legend_labels,
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0.035),
-        ncol=len(handles),
-        frameon=True,
-        framealpha=0.95,
-        fontsize=legend_font_size,
-        handlelength=2.4,
-        columnspacing=1.6,
-        borderpad=0.9,
-        handletextpad=0.7,
-    )
-    legend.get_frame().set_edgecolor("#CCCCCC")
-    for text, item in zip(legend.get_texts(), legend_items):
-        text.set_color(item["style"]["color"])
-        text.set_fontweight("bold")
+        legend = fig.legend(
+            handles,
+            legend_labels,
+            loc="lower center",
+            bbox_to_anchor=(0.5, 0.035),
+            ncol=len(handles),
+            frameon=True,
+            framealpha=0.95,
+            fontsize=legend_font_size,
+            handlelength=2.4,
+            columnspacing=1.6,
+            borderpad=0.9,
+            handletextpad=0.7,
+        )
+        legend.get_frame().set_edgecolor("#CCCCCC")
+        for text, item in zip(legend.get_texts(), legend_items):
+            text.set_color(item["style"]["color"])
+            text.set_fontweight("bold")
 
     fig.savefig(out, facecolor="white", dpi=dpi)
     print(f"wrote {out}")
@@ -567,6 +569,8 @@ def main() -> int:
                     help=f"radial percent label font size (default {DEFAULT_RADIAL_FONT_SIZE})")
     ap.add_argument("--legend-font-size", type=int, default=DEFAULT_LEGEND_FONT_SIZE,
                     help=f"legend font size (default {DEFAULT_LEGEND_FONT_SIZE})")
+    ap.add_argument("--no-legend", action="store_true",
+                    help="omit the bottom legend")
     ap.add_argument("--title-font-size", type=int, default=DEFAULT_TITLE_FONT_SIZE,
                     help=f"title font size (default {DEFAULT_TITLE_FONT_SIZE})")
     ap.add_argument("--label-pad", type=int, default=DEFAULT_LABEL_PAD,
@@ -644,6 +648,7 @@ def main() -> int:
         label_font_size=args.label_font_size,
         radial_font_size=args.radial_font_size,
         legend_font_size=args.legend_font_size,
+        no_legend=args.no_legend,
         title_font_size=args.title_font_size,
         label_pad=args.label_pad,
         label_width=args.label_width,

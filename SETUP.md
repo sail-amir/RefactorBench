@@ -173,6 +173,7 @@ python scripts/plot_radar_by_type.py \
   --legend-label-width 16 \
   --fig-width 13 --fig-height 14 --dpi 200 \
   --out runs/refactorbench_radar.png
+# add --no-legend to omit the bottom legend
 ```
 
 ### 9. Inspect a run (status + health)
