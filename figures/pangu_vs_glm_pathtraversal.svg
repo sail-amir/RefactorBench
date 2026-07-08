@@ -21,8 +21,7 @@
       .card { fill: #ffffff; stroke: #d1d5db; stroke-width: 2; rx: 20; }
       .pangu-card { fill: #f0fbf4; stroke: #1b7f3b; stroke-width: 3; rx: 22; }
       .glm-card { fill: #fff4f2; stroke: #c43e2f; stroke-width: 3; rx: 22; }
-      .gpt-card { fill: #fff7ed; stroke: #c2410c; stroke-width: 3; rx: 22; }
-      .opus-card { fill: #faf5ff; stroke: #7e22ce; stroke-width: 3; rx: 22; }
+      .fail-card { fill: #fff4f2; stroke: #c43e2f; stroke-width: 3; rx: 22; }
       .checker-card { fill: #f8fafc; stroke: #334155; stroke-width: 2.5; rx: 20; }
       .code { fill: #f3f4f6; stroke: #d1d5db; stroke-width: 1.5; rx: 14; }
       .green-code { fill: #e7f7ec; stroke: #93d3a8; stroke-width: 1.5; rx: 14; }
@@ -98,14 +97,14 @@
   <rect x="920" y="760" width="535" height="44" rx="22" fill="#ffe0dc"/>
   <text x="1187" y="789" class="pill fail" text-anchor="middle">RESULT: FAIL  |  reason: checker assertion</text>
 
-  <rect x="90" y="855" width="625" height="265" class="gpt-card shadow"/>
-  <rect x="885" y="855" width="625" height="265" class="opus-card shadow"/>
+  <rect x="90" y="855" width="625" height="265" class="fail-card shadow"/>
+  <rect x="885" y="855" width="625" height="265" class="fail-card shadow"/>
 
-  <rect x="125" y="890" width="160" height="46" rx="23" fill="#c2410c"/>
+  <rect x="125" y="890" width="160" height="46" rx="23" fill="#c43e2f"/>
   <text x="205" y="921" class="pill" text-anchor="middle" fill="#ffffff">GPT-5.2</text>
   <text x="310" y="921" class="section">failed</text>
 
-  <rect x="920" y="890" width="160" height="46" rx="23" fill="#7e22ce"/>
+  <rect x="920" y="890" width="160" height="46" rx="23" fill="#c43e2f"/>
   <text x="1000" y="921" class="pill" text-anchor="middle" fill="#ffffff">Opus 4.7</text>
   <text x="1105" y="921" class="section">failed</text>
 
@@ -114,7 +113,7 @@
   <text x="125" y="1035" class="small">2. safe_join() still did not raise PathTraversal</text>
   <text x="125" y="1065" class="small">3. Mostly added class, docs, and imports</text>
 
-  <rect x="125" y="1082" width="535" height="32" rx="16" fill="#ffedd5"/>
+  <rect x="125" y="1082" width="535" height="32" rx="16" fill="#ffe0dc"/>
   <text x="392" y="1104" class="pill fail" text-anchor="middle">RESULT: FAIL  |  missing test + runtime behavior</text>
 
   <text x="920" y="970" class="body">Patch applied, but class + runtime behavior were wrong:</text>
@@ -122,7 +121,7 @@
   <text x="920" y="1035" class="small">2. Checker expected SuspiciousOperation as the base</text>
   <text x="920" y="1065" class="small">3. safe_join() still did not raise PathTraversal</text>
 
-  <rect x="920" y="1082" width="535" height="32" rx="16" fill="#f3e8ff"/>
+  <rect x="920" y="1082" width="535" height="32" rx="16" fill="#ffe0dc"/>
   <text x="1187" y="1104" class="pill fail" text-anchor="middle">RESULT: FAIL  |  wrong base + missing safe_join</text>
 
   <rect x="340" y="1150" width="920" height="110" class="card"/>
