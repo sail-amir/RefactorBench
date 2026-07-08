@@ -41,6 +41,8 @@ DEFAULT_LABEL_PAD = 20
 DEFAULT_LABEL_WIDTH = 16
 DEFAULT_LEGEND_LABEL_WIDTH = 16
 DEFAULT_DPI = 200
+DEFAULT_FIG_WIDTH = 13.0
+DEFAULT_FIG_HEIGHT = 14.0
 RADAR_AXES_RECT = [0.19, 0.235, 0.62, 0.575714]
 
 CANONICAL_TYPES = [
@@ -336,6 +338,36 @@ def legend_sort_key(item: dict[str, Any]) -> tuple[int, int]:
     return (len(ROLE_ORDER), item["idx"])
 
 
+def parse_axes_rect(raw: str | None) -> list[float] | None:
+    if not raw:
+        return None
+    parts = [p.strip() for p in raw.split(",")]
+    if len(parts) != 4:
+        sys.exit("--axes-rect must be four comma-separated floats: left,bottom,width,height")
+    try:
+        rect = [float(p) for p in parts]
+    except ValueError:
+        sys.exit("--axes-rect must be four comma-separated floats: left,bottom,width,height")
+    left, bottom, width, height = rect
+    if min(rect) < 0 or width <= 0 or height <= 0 or left + width > 1 or bottom + height > 1:
+        sys.exit("--axes-rect values must fit inside the figure: left,bottom,width,height")
+    return rect
+
+
+def default_axes_rect(fig_width: float, fig_height: float) -> list[float]:
+    left = RADAR_AXES_RECT[0]
+    bottom = RADAR_AXES_RECT[1]
+    width = RADAR_AXES_RECT[2]
+    height = width * fig_width / fig_height
+    if bottom + height > 0.92:
+        height = max(0.1, 0.92 - bottom)
+        width = height * fig_height / fig_width
+    if left + width > 0.92:
+        width = max(0.1, 0.92 - left)
+        height = width * fig_width / fig_height
+    return [left, bottom, width, height]
+
+
 def print_table(types: list[str], labels: list[str], aggs: list[dict[str, dict[str, int]]]) -> None:
     width = max(len(t) for t in types)
     print(f"\n{'type':<{width}}  " + "  ".join(f"{lab:>18}" for lab in labels))
@@ -367,6 +399,10 @@ def plot_radar(
     label_pad: int,
     label_width: int,
     legend_label_width: int,
+    fig_width: float,
+    fig_height: float,
+    dpi: int,
+    axes_rect: list[float] | None,
 ) -> None:
     try:
         import matplotlib
@@ -383,9 +419,9 @@ def plot_radar(
     angles = [2 * math.pi * i / n_axes for i in range(n_axes)]
     angles_closed = angles + [angles[0]]
 
-    fig = plt.figure(figsize=(13, 14), dpi=DEFAULT_DPI)
-    # The box is square in physical units: 0.62 * 13in == 0.575714 * 14in.
-    ax = fig.add_axes(RADAR_AXES_RECT, polar=True)
+    fig = plt.figure(figsize=(fig_width, fig_height), dpi=dpi)
+    rect = axes_rect or default_axes_rect(fig_width, fig_height)
+    ax = fig.add_axes(rect, polar=True)
     ax.set_theta_offset(math.pi / 2)
     ax.set_theta_direction(-1)
 
@@ -490,7 +526,7 @@ def plot_radar(
         text.set_color(item["style"]["color"])
         text.set_fontweight("bold")
 
-    fig.savefig(out, facecolor="white", dpi=DEFAULT_DPI)
+    fig.savefig(out, facecolor="white", dpi=dpi)
     print(f"wrote {out}")
 
 
@@ -539,6 +575,14 @@ def main() -> int:
                     help=f"wrap refactoring-type labels after this many chars (default {DEFAULT_LABEL_WIDTH})")
     ap.add_argument("--legend-label-width", type=int, default=DEFAULT_LEGEND_LABEL_WIDTH,
                     help=f"wrap legend names after this many chars (default {DEFAULT_LEGEND_LABEL_WIDTH})")
+    ap.add_argument("--fig-width", type=float, default=DEFAULT_FIG_WIDTH,
+                    help=f"figure width in inches (default {DEFAULT_FIG_WIDTH:g})")
+    ap.add_argument("--fig-height", type=float, default=DEFAULT_FIG_HEIGHT,
+                    help=f"figure height in inches (default {DEFAULT_FIG_HEIGHT:g})")
+    ap.add_argument("--dpi", type=int, default=DEFAULT_DPI,
+                    help=f"figure and saved PNG dpi (default {DEFAULT_DPI})")
+    ap.add_argument("--axes-rect",
+                    help="optional polar axes box as left,bottom,width,height figure fractions")
     ap.add_argument("--title", help="override chart title")
     args = ap.parse_args()
 
@@ -559,6 +603,11 @@ def main() -> int:
         sys.exit("--label-pad must be >= 0")
     if args.fill_alpha is not None and args.fill_alpha < 0:
         sys.exit("--fill-alpha must be >= 0")
+    if args.fig_width <= 0 or args.fig_height <= 0:
+        sys.exit("--fig-width and --fig-height must be positive")
+    if args.dpi <= 0:
+        sys.exit("--dpi must be positive")
+    axes_rect = parse_axes_rect(args.axes_rect)
 
     taxonomy = load_taxonomy(args.taxonomy)
     scored_and_meta = [load_scores(path) for path in args.results]
@@ -599,6 +648,10 @@ def main() -> int:
         label_pad=args.label_pad,
         label_width=args.label_width,
         legend_label_width=args.legend_label_width,
+        fig_width=args.fig_width,
+        fig_height=args.fig_height,
+        dpi=args.dpi,
+        axes_rect=axes_rect,
     )
     return 0
 
