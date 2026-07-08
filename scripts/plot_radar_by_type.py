@@ -216,6 +216,47 @@ def axis_labels(
     return [TYPE_LABELS.get(typ, wrap_label(typ, width=label_width)) for typ in types]
 
 
+def axis_label_alignment(theta: float) -> tuple[str, str]:
+    display_theta = math.pi / 2 - theta
+    x = math.cos(display_theta)
+    y = math.sin(display_theta)
+    if x > 0.20:
+        ha = "left"
+    elif x < -0.20:
+        ha = "right"
+    else:
+        ha = "center"
+    if y > 0.70:
+        va = "bottom"
+    elif y < -0.70:
+        va = "top"
+    else:
+        va = "center"
+    return ha, va
+
+
+def draw_axis_labels(
+    ax: Any,
+    angles: list[float],
+    labels: list[str],
+    label_font_size: int,
+    label_pad: int,
+) -> None:
+    # Keep labels outside the 100% boundary even when a small --label-pad is passed.
+    label_radius = 100 + max(label_pad, int(round(label_font_size * 1.25)))
+    for theta, label in zip(angles, labels):
+        ha, va = axis_label_alignment(theta)
+        ax.text(
+            theta,
+            label_radius,
+            label,
+            fontsize=label_font_size,
+            ha=ha,
+            va=va,
+            clip_on=False,
+        )
+
+
 def values_for(agg: dict[str, dict[str, int]], types: list[str]) -> list[float]:
     vals = []
     for typ in types:
@@ -386,9 +427,16 @@ def plot_radar(
         )
 
     ax.set_xticks(angles)
-    ax.set_xticklabels(axis_labels(types, label_width=label_width), fontsize=label_font_size)
-    ax.tick_params(axis="x", pad=label_pad)
     ax.set_ylim(0, 100)
+    ax.set_xticklabels([])
+    ax.tick_params(axis="x", length=0, pad=0)
+    draw_axis_labels(
+        ax,
+        angles,
+        axis_labels(types, label_width=label_width),
+        label_font_size=label_font_size,
+        label_pad=label_pad,
+    )
     ax.set_yticks([20, 40, 60, 80, 100])
     ax.set_yticklabels(["20%", "40%", "60%", "80%", "100%"], fontsize=radial_font_size, color="#888")
     ax.set_rlabel_position(0)
@@ -484,7 +532,7 @@ def main() -> int:
     ap.add_argument("--title-font-size", type=int, default=DEFAULT_TITLE_FONT_SIZE,
                     help=f"title font size (default {DEFAULT_TITLE_FONT_SIZE})")
     ap.add_argument("--label-pad", type=int, default=DEFAULT_LABEL_PAD,
-                    help=f"outward padding for refactoring-type labels (default {DEFAULT_LABEL_PAD})")
+                    help=f"minimum outward padding for refactoring-type labels (default {DEFAULT_LABEL_PAD})")
     ap.add_argument("--label-width", type=int, default=DEFAULT_LABEL_WIDTH,
                     help=f"wrap refactoring-type labels after this many chars (default {DEFAULT_LABEL_WIDTH})")
     ap.add_argument("--legend-label-width", type=int, default=DEFAULT_LEGEND_LABEL_WIDTH,
