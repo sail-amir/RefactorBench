@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Why Pangu passed and GLM failed on the PathTraversal task</title>
+  <desc id="desc">Two-column comparison showing that Pangu updated the required Django test file while GLM missed that file and failed the official checker.</desc>
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .title { font: 700 44px Arial, Helvetica, sans-serif; fill: #151515; }
+      .subtitle { font: 400 22px Arial, Helvetica, sans-serif; fill: #4b5563; }
+      .section { font: 700 25px Arial, Helvetica, sans-serif; fill: #111827; }
+      .body { font: 400 20px Arial, Helvetica, sans-serif; fill: #374151; }
+      .small { font: 400 17px Arial, Helvetica, sans-serif; fill: #4b5563; }
+      .mono { font: 400 18px Consolas, "Liberation Mono", monospace; fill: #1f2937; }
+      .mono-small { font: 400 16px Consolas, "Liberation Mono", monospace; fill: #1f2937; }
+      .pill { font: 700 19px Arial, Helvetica, sans-serif; letter-spacing: 1px; }
+      .pass { fill: #0f7a3b; }
+      .fail { fill: #b42318; }
+      .muted { fill: #6b7280; }
+      .card { fill: #ffffff; stroke: #d1d5db; stroke-width: 2; rx: 20; }
+      .pangu-card { fill: #f0fbf4; stroke: #1b7f3b; stroke-width: 3; rx: 22; }
+      .glm-card { fill: #fff4f2; stroke: #c43e2f; stroke-width: 3; rx: 22; }
+      .checker-card { fill: #f8fafc; stroke: #334155; stroke-width: 2.5; rx: 20; }
+      .code { fill: #f3f4f6; stroke: #d1d5db; stroke-width: 1.5; rx: 14; }
+      .green-code { fill: #e7f7ec; stroke: #93d3a8; stroke-width: 1.5; rx: 14; }
+      .red-code { fill: #fff0ee; stroke: #efaaa3; stroke-width: 1.5; rx: 14; }
+      .line { stroke: #9ca3af; stroke-width: 3; fill: none; }
+      .green-line { stroke: #1b7f3b; stroke-width: 5; fill: none; }
+      .red-line { stroke: #c43e2f; stroke-width: 5; fill: none; }
+      .dash { stroke-dasharray: 10 8; }
+      .shadow { filter: drop-shadow(0px 8px 18px rgba(15, 23, 42, 0.10)); }
+    </style>
+    <marker id="arrow-grey" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#9ca3af"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#1b7f3b"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#c43e2f"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1600" height="1000"/>
+
+  <text x="800" y="70" class="title" text-anchor="middle">Why Pangu passed while GLM failed</text>
+  <text x="800" y="110" class="subtitle" text-anchor="middle">RefactorBench Extract Class case: new-path-traversal-exception-task</text>
+
+  <rect x="445" y="150" width="710" height="185" class="checker-card shadow"/>
+  <text x="800" y="190" class="section" text-anchor="middle">Official checker requirement</text>
+  <text x="800" y="225" class="body" text-anchor="middle">The patch must update the existing Django test surface, not only runtime code.</text>
+  <rect x="515" y="248" width="570" height="62" class="code"/>
+  <text x="540" y="273" class="mono">tests/utils_tests/test_os_utils.py</text>
+  <text x="540" y="298" class="mono-small">must import and assert raises PathTraversal</text>
+
+  <path d="M760 335 C720 390, 620 390, 520 430" class="green-line" marker-end="url(#arrow-green)"/>
+  <path d="M840 335 C880 390, 980 390, 1080 430" class="red-line" marker-end="url(#arrow-red)"/>
+
+  <rect x="90" y="395" width="625" height="430" class="pangu-card shadow"/>
+  <rect x="885" y="395" width="625" height="430" class="glm-card shadow"/>
+
+  <rect x="125" y="430" width="150" height="46" rx="23" fill="#1b7f3b"/>
+  <text x="200" y="461" class="pill" text-anchor="middle" fill="#ffffff">PANGU</text>
+  <text x="300" y="461" class="section">passed</text>
+
+  <rect x="920" y="430" width="130" height="46" rx="23" fill="#c43e2f"/>
+  <text x="985" y="461" class="pill" text-anchor="middle" fill="#ffffff">GLM</text>
+  <text x="1075" y="461" class="section">failed</text>
+
+  <text x="125" y="515" class="body">Patch applied and covered all required surfaces:</text>
+  <text x="125" y="552" class="small">1. Added PathTraversal exception</text>
+  <text x="125" y="582" class="small">2. Runtime code raises PathTraversal</text>
+  <text x="125" y="612" class="small">3. Existing official test file was updated</text>
+
+  <rect x="125" y="645" width="535" height="92" class="green-code"/>
+  <text x="150" y="675" class="mono-small">diff --git a/tests/utils_tests/test_os_utils.py</text>
+  <text x="150" y="704" class="mono-small">- from django.core.exceptions import SuspiciousFileOperation</text>
+  <text x="150" y="729" class="mono-small">+ from django.core.exceptions import PathTraversal</text>
+
+  <rect x="125" y="760" width="535" height="44" rx="22" fill="#dff4e6"/>
+  <text x="392" y="789" class="pill pass" text-anchor="middle">RESULT: PASS  |  reason: ok</text>
+
+  <text x="920" y="515" class="body">Patch applied, but missed the official test file:</text>
+  <text x="920" y="552" class="small">1. Added PathTraversal exception</text>
+  <text x="920" y="582" class="small">2. Runtime code raises PathTraversal</text>
+  <text x="920" y="612" class="small">3. Added ad-hoc root test_*.py scripts instead</text>
+
+  <rect x="920" y="645" width="535" height="92" class="red-code"/>
+  <text x="945" y="675" class="mono-small">missing diff for:</text>
+  <text x="945" y="704" class="mono-small">tests/utils_tests/test_os_utils.py</text>
+  <text x="945" y="729" class="mono-small">PathTraversal import not found by checker</text>
+
+  <rect x="920" y="760" width="535" height="44" rx="22" fill="#ffe0dc"/>
+  <text x="1187" y="789" class="pill fail" text-anchor="middle">RESULT: FAIL  |  reason: checker assertion</text>
+
+  <path d="M392 825 C450 890, 650 902, 800 902" class="green-line" marker-end="url(#arrow-green)"/>
+  <path d="M1187 825 C1125 890, 950 902, 820 902" class="red-line dash" marker-end="url(#arrow-red)"/>
+
+  <rect x="380" y="875" width="840" height="82" class="card"/>
+  <text x="800" y="907" class="section" text-anchor="middle">Takeaway</text>
+  <text x="800" y="937" class="body" text-anchor="middle">Pangu solved the refactor end-to-end. GLM made much of the runtime change,</text>
+  <text x="800" y="963" class="body" text-anchor="middle">but failed because it missed the existing file the official checker validates.</text>
+</svg>
